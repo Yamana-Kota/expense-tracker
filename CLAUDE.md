@@ -16,6 +16,14 @@ components/   # 再利用可能な UI コンポーネント
 public/       # 静的ファイル
 ```
 
+## ドキュメント
+
+- 関数を作成したら JSDoc コメントを必ず記述すること
+  - `/** ... */` 形式で関数の直前に記述する
+  - 関数の目的・役割を日本語で説明する
+  - 引数は `@param` タグ、戻り値は `@returns` タグで記述する
+  - React コンポーネントも対象とする
+
 ## 一般
 
 - 関数の中で関数を定義するのはなるべく避ける
@@ -122,7 +130,6 @@ public/       # 静的ファイル
 
 - 日本語で記述してよい
 - Conventional Commits の派生で、絵文字を使ってコミットの種類を判別できるようにしています。これは、後にソースコードと変更履歴を分析するために利用します。そのため、プルリクエストの表題は絵文字で始めてください。
-
   - 1. 🗃️ DynamoDB GSI の変更がある (CloudFormation の不具合に対処するため区別したい)
   - 2. 💥 プロダクトに後方互換が無い変更がある
   - 3. ✨ プロダクトに新機能の追加がある
@@ -140,4 +147,13 @@ public/       # 静的ファイル
 npm run test:type    # TypeScript による静的型検証
 npm run test:lint    # ESLint による静的検証
 npm run test:format  # Prettier によるフォーマット違反の検出
+```
+
+### npm コマンドの実行方法
+
+このプロジェクトでは Node.js を fnm で管理している。`npm` が PATH に存在しないため、Bash からコマンドを実行する際は事前に PATH を設定すること。
+
+```bash
+export PATH="/c/Users/kotayamana/AppData/Roaming/fnm/node-versions/v22.16.0/installation:$PATH"
+npm run test:type
 ```

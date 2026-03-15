@@ -1,15 +1,37 @@
+// 'use client' がないので、このファイルはサーバーコンポーネント（デフォルト）。
+// useState などは使えないが、初期 HTML をサーバーで生成するため表示が速い。
+
+// Link は Next.js が提供するクライアントサイドナビゲーション用コンポーネント。
+// 通常の <a> タグと違い、ページ全体を再読み込みせずに画面を切り替えられる（SPA的な動作）。
 import Link from 'next/link';
 import { Receipt, Camera, TrendingDown, Clock } from 'lucide-react';
 
+/**
+ * アプリのトップページ（ランディングページ）
+ *
+ * ユーザーが最初にアクセスする画面。アプリの説明と Google ログインボタンを表示する。
+ *
+ * @remarks
+ * サーバーコンポーネントなので JavaScript バンドルに含まれず、
+ * SEO や初期表示速度に優れる。
+ */
 export default function Home() {
   return (
+    // bg-gradient-to-br は「右下方向へのグラデーション背景」を当てる Tailwind クラス。
+    // from-blue-50 to-white で薄い青から白へグラデーションする。
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+      {/* mx-auto で水平中央揃え、max-w-6xl で最大幅を制限する。
+          flex flex-col items-center justify-center で縦横中央に配置。
+          px-4 sm:px-6 lg:px-8 はレスポンシブなパディング。
+          sm: はスマホ以上、lg: はPC以上のときに適用されるクラス。 */}
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
-        {/* ヘロセクション */}
+        {/* ヘロセクション（ページの最初に見える大きなコンテンツ領域） */}
         <div className="text-center">
-          {/* ロゴ */}
+          {/* ロゴアイコン */}
           <div className="mb-8 flex justify-center">
             <div className="rounded-2xl bg-blue-600 p-5 shadow-lg">
+              {/* lucide-react のアイコンコンポーネント。h-12 w-12 でサイズを指定。
+                  sm:h-16 sm:w-16 でスマホ以上のサイズでは少し大きく表示。 */}
               <Receipt className="h-12 w-12 text-white sm:h-16 sm:w-16" />
             </div>
           </div>
@@ -22,11 +44,14 @@ export default function Home() {
           {/* キャッチコピー */}
           <p className="mb-12 text-xl text-gray-600 sm:text-2xl lg:text-3xl">
             レシートを撮るだけで
+            {/* <br /> は HTML の改行タグ。JSX でもそのまま使える。 */}
             <br />
             かんたん家計簿
           </p>
 
-          {/* 特徴 */}
+          {/* 特徴カード3枚。
+              grid gap-6 で CSS Grid レイアウト。
+              sm:grid-cols-3 で「スマホ以上では3カラム」になる（デフォルトは1カラム）。 */}
           <div className="mb-12 grid gap-6 sm:grid-cols-3 sm:gap-8">
             <div className="rounded-xl bg-white p-6 shadow-sm">
               <div className="mb-3 flex justify-center">
@@ -65,11 +90,19 @@ export default function Home() {
             </div>
           </div>
 
-          {/* ログインボタン */}
+          {/* ログインボタン。<a> タグではなく Next.js の Link コンポーネントを使う。
+              href="/dashboard" でダッシュボードページへ遷移する。
+              inline-flex items-center gap-3 でアイコンとテキストを横並びに揃える。
+              active:scale-95 は「クリック中に少し縮む」アニメーション効果。 */}
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-3 rounded-xl bg-blue-600 px-10 py-5 text-lg font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95 sm:px-12 sm:text-xl"
           >
+            {/* Google アイコンを SVG で直接埋め込んでいる。
+                SVG（Scalable Vector Graphics）はベクター形式の画像フォーマット。
+                どんなサイズに拡大・縮小してもぼやけない。
+                viewBox で SVG の座標系を定義し、<path> で図形を描く。
+                fill="currentColor" は「親要素の文字色（CSS の color）を使う」指定。 */}
             <svg className="h-6 w-6" viewBox="0 0 24 24">
               <path
                 fill="currentColor"
