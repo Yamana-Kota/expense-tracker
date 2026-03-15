@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   --background: #ffffff;
@@ -23,4 +23,105 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ── ダッシュボード ───────────────────────── */
+
+/* ページ全体のコンテナ */
+.dashboard-container {
+  margin-inline: auto;
+  max-width: 42rem; /* 672px / 2xl */
+  padding: 1.5rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .dashboard-container {
+    padding-inline: 1.5rem;
+  }
+}
+
+/* ── タブナビゲーション ──────────────────────── */
+
+/* タブナビゲーション全体のコンテナ */
+.tab-nav {
+  margin-bottom: 1.5rem;
+  display: flex;
+  gap: 0.25rem;
+  border-radius: 0.75rem;
+  background-color: #f3f4f6;
+  padding: 0.25rem;
+}
+
+/* 各タブボタンの基本スタイル */
+.tab-nav__button {
+  display: flex;
+  flex: 1 1 0%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* アクティブなタブボタン */
+.tab-nav__button--active {
+  background-color: #ffffff;
+  color: #2563eb;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* 非アクティブなタブボタン */
+.tab-nav__button--inactive {
+  color: #6b7280;
+}
+
+.tab-nav__button--inactive:hover {
+  color: #374151;
+}
+
+/* タブボタン内のアイコン */
+.tab-nav__icon {
+  height: 1rem;
+  width: 1rem;
+  flex-shrink: 0;
+}
+
+/* ── カレンダー（手動登録） ─────────────────── */
+
+/* 日付セルの最低高さ */
+.calendar-day-cell {
+  min-height: 4.5rem; /* 72px */
+}
+
+/* セル内の収支金額テキスト */
+.calendar-amount-label {
+  font-size: 0.6875rem; /* 11px */
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+/* ── 動的グラフ（CSS 変数で幅・高さを制御） ─── */
+
+/* カテゴリ別支出プログレスバー */
+.progress-fill {
+  width: var(--progress-width);
+}
+
+/* 月別推移グラフのバー */
+.chart-bar {
+  height: var(--chart-height);
+}
+
+/* 月別推移グラフのY軸ラベル */
+.chart-y-label {
+  bottom: var(--y-label-bottom);
+  transform: translateY(50%);
+}
+
+/* 月別推移グラフのY軸グリッド線 */
+.chart-y-gridline {
+  bottom: var(--y-label-bottom);
 }
