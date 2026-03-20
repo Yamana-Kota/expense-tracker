@@ -1,15 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  TrendingUp,
-  TrendingDown,
-  X,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import DayCell from '@/components/tabs/DayCell';
+import EntryRow from '@/components/tabs/EntryRow';
 
 type EntryType = 'expense' | 'income';
 
@@ -261,6 +255,10 @@ export default function ManualEntryTab() {
     [],
   );
 
+  const handleDeleteEntry = useCallback((id: number) => {
+    setEntries((previous) => previous.filter((entry) => entry.id !== id));
+  }, []);
+
   const handleSave = useCallback(() => {
     if (!selectedDate) return;
     const entry = buildEntry(selectedDate, amount, entryType, category, note);
@@ -365,38 +363,11 @@ export default function ManualEntryTab() {
           {selectedEntries.length > 0 && (
             <div className="mb-4 space-y-2">
               {selectedEntries.map((entry) => (
-                <div
+                <EntryRow
                   key={entry.id}
-                  className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    {entry.type === 'expense' ? (
-                      <TrendingDown className="h-4 w-4 flex-shrink-0 text-red-400" />
-                    ) : (
-                      <TrendingUp className="h-4 w-4 flex-shrink-0 text-green-500" />
-                    )}
-                    <div>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {entry.category}
-                      </span>
-                      {entry.note && (
-                        <span className="ml-2 text-xs text-gray-400">
-                          {entry.note}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <span
-                    className={`text-sm font-bold ${
-                      entry.type === 'expense'
-                        ? 'text-red-500'
-                        : 'text-green-600'
-                    }`}
-                  >
-                    {entry.type === 'expense' ? '-' : '+'}¥
-                    {entry.amount.toLocaleString()}
-                  </span>
-                </div>
+                  entry={entry}
+                  onDelete={handleDeleteEntry}
+                />
               ))}
             </div>
           )}
