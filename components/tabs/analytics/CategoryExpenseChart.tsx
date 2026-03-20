@@ -1,6 +1,3 @@
-// カテゴリ別の支出データ（現在はモックデータ）。
-// percentage はプログレスバーの幅に使う（0〜100 の数値）。
-// color は Tailwind の背景色クラス名（文字列として保持）。
 const categoryData = [
   { name: '食費', amount: 45200, percentage: 36, color: 'bg-blue-500' },
   { name: '外食', amount: 18600, percentage: 15, color: 'bg-indigo-400' },
@@ -21,19 +18,15 @@ export default function CategoryExpenseChart() {
     <div className="rounded-2xl bg-white p-5 shadow-sm">
       <h3 className="mb-5 font-bold text-gray-900">カテゴリ別支出</h3>
 
-      {/* 凡例（カラードット + カテゴリ名） */}
       <div className="mb-5 flex flex-wrap gap-2">
         {categoryData.map((cat) => (
           <div key={cat.name} className="flex items-center gap-1.5">
-            {/* cat.color は Tailwind クラス名の文字列（例: 'bg-blue-500'）。
-                動的なクラス名は Tailwind の JIT モードで正しく処理される。 */}
             <div className={`h-2.5 w-2.5 rounded-sm ${cat.color}`} />
             <span className="text-xs text-gray-600">{cat.name}</span>
           </div>
         ))}
       </div>
 
-      {/* 各カテゴリのプログレスバー */}
       <div className="space-y-3">
         {categoryData.map((cat) => (
           <div key={cat.name}>
@@ -49,15 +42,7 @@ export default function CategoryExpenseChart() {
                 </span>
               </span>
             </div>
-            {/* プログレスバー本体。
-                overflow-hidden で子要素が親の角丸から飛び出さないようにする。 */}
             <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-              {/* CSS カスタムプロパティ（CSS 変数）を React から設定するパターン。
-                  style 属性に `{ '--progress-width': '36%' }` のようなオブジェクトを渡す。
-                  TypeScript では通常の CSS プロパティしか型として認識しないため、
-                  `as React.CSSProperties` でキャストして型エラーを回避する。
-                  globals.css の .progress-fill クラスが --progress-width 変数を参照して
-                  実際のアニメーション付き幅を設定している。 */}
               <div
                 className={`progress-fill h-full rounded-full ${cat.color} transition-all duration-700`}
                 style={
