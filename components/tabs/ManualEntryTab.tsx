@@ -138,7 +138,7 @@ function buildEntry(
   category: string,
   note: string,
 ): Entry | null {
-  if (!amount) return null;
+  if (!amount || Number(amount) <= 0) return null;
   return {
     id: Date.now(),
     date: selectedDate,
@@ -468,7 +468,7 @@ export default function ManualEntryTab() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={!amount}
+                  disabled={!amount || Number(amount) <= 0}
                   className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   保存
