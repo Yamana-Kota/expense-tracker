@@ -5,8 +5,8 @@ import { Camera } from 'lucide-react';
 /**
  * レシート撮影・アップロードタブ
  *
- * 今月の支出サマリーとアップロードエリアを表示する。
- * 現在はモックデータ（固定値）を表示しており、実際のアップロード機能は未実装。
+ * アップロードエリアを表示する。
+ * 現在はモックUIのみで、実際のアップロード機能は未実装。
  *
  * @remarks
  * 将来的にはカメラ API やファイルアップロードを実装予定。
@@ -14,11 +14,6 @@ import { Camera } from 'lucide-react';
 export default function ReceiptTab() {
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-white shadow-lg">
-        <p className="mb-1 text-sm font-medium opacity-80">今月の支出</p>
-        <p className="text-3xl font-bold">¥127,420</p>
-      </div>
-
       <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-white p-10 text-center transition-colors hover:border-blue-400 hover:bg-blue-50">
         <div className="flex flex-col items-center gap-4">
           <div className="rounded-full bg-blue-100 p-5">

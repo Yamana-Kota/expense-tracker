@@ -1,7 +1,15 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+  X,
+} from 'lucide-react';
 import DayCell from '@/components/tabs/DayCell';
 import EntryRow from '@/components/tabs/EntryRow';
 
@@ -71,6 +79,46 @@ const EXPENSE_CATEGORIES = [
 ];
 const INCOME_CATEGORIES = ['給与', '副業', 'ボーナス', '贈り物', 'その他'];
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+/**
+ * サマリーカード用に金額を整形する
+ *
+ * 1万円以上は「万円」単位で表示する。小数第1位まで保持し、末尾の .0 は除去する。
+ *
+ * @param amount - 表示する金額（円）
+ * @returns フォーマット済みの金額文字列
+ */
+function formatSummaryAmount(amount: number): string {
+  if (amount >= 10000) {
+    return `${parseFloat((amount / 10000).toFixed(1))}万円`;
+  }
+  return `${amount.toLocaleString()}円`;
+}
+
+/**
+ * 指定した年月のエントリから支出合計と収入合計を計算する
+ *
+ * @param entries - 全エントリの配列
+ * @param year - 年
+ * @param month - 月（0始まり）
+ * @returns 支出合計と収入合計を持つオブジェクト
+ */
+function getMonthlyTotals(
+  entries: Entry[],
+  year: number,
+  month: number,
+): { expense: number; income: number } {
+  const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const monthEntries = entries.filter((entry) => entry.date.startsWith(prefix));
+  return {
+    expense: monthEntries
+      .filter((entry) => entry.type === 'expense')
+      .reduce((sum, entry) => sum + entry.amount, 0),
+    income: monthEntries
+      .filter((entry) => entry.type === 'income')
+      .reduce((sum, entry) => sum + entry.amount, 0),
+  };
+}
 
 /**
  * 年・月・日を 'YYYY-MM-DD' 形式の文字列に変換する
@@ -186,11 +234,21 @@ export default function ManualEntryTab() {
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
+  const maxMonth = new Date(today.getFullYear() + 1, today.getMonth() - 1, 1);
+  const isMaxMonth =
+    year === maxMonth.getFullYear() && month === maxMonth.getMonth();
   const firstDayOfWeek = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const selectedEntries = selectedDate
     ? getEntriesForDate(entries, selectedDate)
     : [];
+
+  const { expense: monthlyExpense, income: monthlyIncome } = getMonthlyTotals(
+    entries,
+    year,
+    month,
+  );
+  const monthlyBalance = monthlyIncome - monthlyExpense;
 
   const handlePrevMonth = useCallback(() => {
     setCurrentMonth(
@@ -270,8 +328,53 @@ export default function ManualEntryTab() {
     setShowForm(false);
   }, [selectedDate, amount, entryType, category, note]);
 
+  const handleFormSubmit = useCallback(
+    (event: React.SyntheticEvent) => {
+      event.preventDefault();
+      handleSave();
+    },
+    [handleSave],
+  );
+
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <TrendingDown className="h-4 w-4 text-red-400" />
+            <span className="text-xs font-medium text-gray-500">支出</span>
+          </div>
+          <p className="text-lg font-bold text-gray-900">
+            {formatSummaryAmount(monthlyExpense)}
+          </p>
+        </div>
+        <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <TrendingUp className="h-4 w-4 text-green-500" />
+            <span className="text-xs font-medium text-gray-500">収入</span>
+          </div>
+          <p className="text-lg font-bold text-gray-900">
+            {formatSummaryAmount(monthlyIncome)}
+          </p>
+        </div>
+        <div
+          className={`rounded-2xl px-4 py-3 shadow-sm ${monthlyBalance >= 0 ? 'bg-green-50' : 'bg-red-50'}`}
+        >
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <Wallet
+              className={`h-4 w-4 ${monthlyBalance >= 0 ? 'text-green-500' : 'text-red-400'}`}
+            />
+            <span className="text-xs font-medium text-gray-500">収支</span>
+          </div>
+          <p
+            className={`text-lg font-bold ${monthlyBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}
+          >
+            {monthlyBalance >= 0 ? '+' : ''}
+            {formatSummaryAmount(Math.abs(monthlyBalance))}
+          </p>
+        </div>
+      </div>
+
       <div className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <button
@@ -285,7 +388,8 @@ export default function ManualEntryTab() {
           </h2>
           <button
             onClick={handleNextMonth}
-            className="rounded-lg p-2 transition-colors hover:bg-gray-100"
+            disabled={isMaxMonth}
+            className="rounded-lg p-2 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
           >
             <ChevronRight className="h-5 w-5 text-gray-600" />
           </button>
@@ -351,13 +455,15 @@ export default function ManualEntryTab() {
                 },
               )}
             </h3>
-            <button
-              onClick={handleShowAddForm}
-              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4" />
-              追加
-            </button>
+            {!showForm && (
+              <button
+                onClick={handleShowAddForm}
+                className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-700"
+              >
+                <Plus className="h-4 w-4" />
+                追加
+              </button>
+            )}
           </div>
 
           {selectedEntries.length > 0 && (
@@ -379,10 +485,14 @@ export default function ManualEntryTab() {
           )}
 
           {showForm && (
-            <div className="rounded-xl border border-gray-200 p-4">
+            <form
+              onSubmit={handleFormSubmit}
+              className="rounded-xl border border-gray-200 p-4"
+            >
               <div className="mb-4 flex items-center justify-between">
                 <h4 className="text-sm font-bold text-gray-900">新しい記録</h4>
                 <button
+                  type="button"
                   onClick={handleHideForm}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -392,6 +502,7 @@ export default function ManualEntryTab() {
 
               <div className="mb-4 flex gap-2">
                 <button
+                  type="button"
                   onClick={handleSelectExpense}
                   className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all ${
                     entryType === 'expense'
@@ -402,6 +513,7 @@ export default function ManualEntryTab() {
                   支出
                 </button>
                 <button
+                  type="button"
                   onClick={handleSelectIncome}
                   className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all ${
                     entryType === 'income'
@@ -461,20 +573,21 @@ export default function ManualEntryTab() {
 
               <div className="mt-4 flex gap-2">
                 <button
+                  type="button"
                   onClick={handleHideForm}
                   className="flex-1 rounded-lg border border-gray-200 py-2.5 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50"
                 >
                   キャンセル
                 </button>
                 <button
-                  onClick={handleSave}
+                  type="submit"
                   disabled={!amount || Number(amount) <= 0}
                   className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   保存
                 </button>
               </div>
-            </div>
+            </form>
           )}
         </div>
       )}

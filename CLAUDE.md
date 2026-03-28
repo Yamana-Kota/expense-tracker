@@ -40,14 +40,105 @@ public/       # 静的ファイル
 - 型推論が明確な場合は型注釈を省略してよい
 - `interface` よりも `type` を優先する
 
+### Optional と undefined の明示
+
+optional プロパティ（`?:`）を使用する場合は、型に `| undefined` を明示してください。
+関数の引数の optional は対象外です。
+
+```typescript
+// 誤
+type Props = {
+    label?: string;
+};
+
+// 正
+type Props = {
+    label?: string | undefined;
+};
+```
+
+### namespace の使用制限
+
+`namespace` ブロック内には `type`・`interface` の定義とその `export` のみ記述できます。
+変数宣言・関数定義・クラス定義などランタイムに残るコードは記述できません（`*.d.ts` は除外）。
+
+### exhaustiveness check
+
+union 型の分岐には必ず exhaustiveness check を行ってください。switch-case も同様に default で `assertNever` を呼んでください。
+
+```typescript
+type Status = "active" | "inactive" | "pending";
+
+function getLabel(status: Status): string {
+    if (status === "active") return "有効";
+    if (status === "inactive") return "無効";
+    if (status === "pending") return "保留";
+    return assertNever(status);
+}
+
+function assertNever(x: never): never {
+    throw new Error("Unexpected value: " + x);
+}
+```
+
+### 早期リターン
+
+if-else よりも早期リターンを使用し、認知負荷を下げてください。
+
+```typescript
+// 誤
+function convert(type: TheType): string {
+    let returnedValue = "";
+    if (type === "foo") {
+        returnedValue = "FOO";
+    } else {
+        returnedValue = "BAR";
+    }
+    return returnedValue;
+}
+
+// 正
+function convert(type: TheType): string {
+    if (type === "foo") return "FOO";
+    if (type === "bar") return "BAR";
+    return assertNever(type);
+}
+```
+
 ## React / コンポーネント
 
 - クラスコンポーネントは使用しないこと ⇒ 関数コンポーネントを使う (`function` キーワード推奨)
 - ファイル名はコンポーネント名と一致させる (PascalCase)
 - 1 ファイルに 1 コンポーネントを原則とする
+- コンポーネントの中でコンポーネントを定義しない（再レンダー時にアンマウント・マウントが発生するため）
 - プロパティ値は「内容が同じであれば `===` 比較が `true` になるような値を渡す」ようにする
   - `{ a, b, c }` や `[a, b, c]` のようなオブジェクト・配列リテラルは直接渡さないこと ⇒ `useMemo()` を使う
   - `() => doSomething()` のような関数式は直接渡さないこと ⇒ `useCallback()` を使う
+
+### Props の型定義での `key` 禁止
+
+Props の型エイリアスに `key` という名前の prop を定義してはいけません。React が内部で使用する特殊 props であるため。
+
+### JSX の冗長な記述
+
+不要な Fragment（子要素が 1 つの場合）、静的文字列への不要な波括弧、不要なテンプレートリテラルは使用しないこと。
+
+```typescript
+// 誤
+return <><div /></>;
+<Button label={"click"} />
+const value = `${someString}`;
+
+// 正
+return <div />;
+<Button label="click" />
+const value = someString;
+```
+
+### JSX のネスト深さ・行数制限
+
+- JSX のネストは最大 5 階層まで。超える場合はコンポーネントを分割する
+- JSX を返す `return` 文の内容は最大 50 行。超える場合はコンポーネントを分割する
 
 ## MUI
 
@@ -55,17 +146,46 @@ public/       # 静的ファイル
 - `xs` プロパティと `style` プロパティの利用を避ける ⇒ `styled()` を使う
 - `component` プロパティの利用を避ける
 
+## イミュータビリティ
+
+state・props・`useMemo` の戻り値などはイミュータブルに扱ってください。
+
+- `Array.prototype.push` などのミューテーションを伴うメソッドは使用しない
+- 型引数に `ReadonlyArray<T>` や `Readonly<T>` を使用することで不変性を型で担保する
+
+## useMemo / useCallback
+
+`useMemo` に渡す関数は副作用を持たない純粋関数にしてください。
+
+```typescript
+// 誤: 副作用（現在時刻取得）を useMemo 内で実行している
+const now = useMemo(() => new Date(), []);
+
+// 正: 副作用を伴う初期値は useState を使用
+const [now] = useState(() => new Date());
+```
+
+以下の目的での `useEffect` は避けてください（過渡状態での余計なレンダリングが発生するため）:
+
+- props が変更されたときにすべての state をリセット → コンポーネント呼び出し側で `key` 属性を渡す
+- props が変更されたときに一部の state を調整 → レンダリング中に条件付きで state を更新する、または `useMemo` を検討する
+
 ## 命名規則
 
-### 単語のつなぎ方はプログラミング言語毎の習慣に従う
+### 基本ケース
 
-- JavaScript/TypeScript ... 変数や関数は camelCase、クラスやコンストラクタは PascalCase、型名は PascalCase
-- C# ... ほぼすべて PascalCase、ローカル変数は camelCase
-- HTML ... すべて小文字で単語区切りはない
-- CSS ... kebab-case
-- URL ... kebab-case
+| 対象 | ケース | 例 |
+|------|--------|-----|
+| 変数・関数 | camelCase | `fetchData`, `userId` |
+| クラス・コンストラクタ・型 | PascalCase | `UserRecord` |
+| ファイル名・ディレクトリ名（コンポーネント以外） | kebab-case（大文字禁止） | `node-list.tsx` |
+| React コンポーネントのファイル名 | PascalCase | `UserCard.tsx`, `LoginPage.tsx` |
+| CSS | kebab-case | |
+| URL | kebab-case | |
 
-頭文字語は、普通の単語と同様に扱います。
+React コンポーネント以外のファイル名・ディレクトリ名のパスセグメントに大文字を含めてはいけません。
+
+頭文字語は普通の単語と同様に扱います。
 
 | 良い例          | 悪い例          |
 | --------------- | --------------- |
@@ -109,11 +229,42 @@ public/       # 静的ファイル
 | `node`            | `nodeData`, `nodeInfo` |
 | `type User = ...` | `type UserType = ...`  |
 
+### アンダースコアプレフィックス
+
+使用している（読み取られている）変数を `_` で始めてはいけません。
+未使用変数を示す目的のみに限り使用できます。
+例外: `_`（lodash）、`__dirname`、`__filename`。
+
+## ファイル構成・コード構造
+
+- ファイルは使用場所の近くに配置する（ファイル種別ではなく機能・コンポーネント単位で管理）
+- 共有ファイルは `shared/` または `common/` ディレクトリに配置する
+
+### Helpers セクション
+
+ファイル内でプライベートなヘルパー関数を定義する場合は、`// Helpers` コメントボックスを使用し、export しない宣言はその下に記述してください。
+
+```typescript
+export function publicFunction() { ... }
+
+// ----------------------------------------
+// Helpers
+// ----------------------------------------
+
+function privateHelper() { ... }
+```
+
+ルール:
+- `Helpers` コメントボックスは 1 つだけ記述できます
+- `Helpers` コメントより下に `export` 文は記述できません
+- `export` しない関数・型の宣言は `Helpers` コメントより下に記述してください
+
 ## スタイリング
 
 - Tailwind CSS のユーティリティクラスを優先する
 - カスタム CSS は `globals.css` にまとめる
-- インラインスタイルは使用しない
+- インラインスタイルは使用しない（動的な値を含む場合は許可）
+- CSS プロパティ値に `!important` を使用しない
 
 ## インポート順序
 
@@ -125,6 +276,67 @@ public/       # 静的ファイル
 ## コードフォーマット
 
 - JavaScript/TypeScript は Prettier に合わせます。
+
+## その他のルール
+
+### オブジェクトスプレッド
+
+スプレッド対象がそのままオブジェクトリテラルである場合は展開してください。
+
+```typescript
+// 誤
+const obj = { a: 1, ...{ b: 2, c: 3 } };
+
+// 正
+const obj = { a: 1, b: 2, c: 3 };
+```
+
+### Array.prototype.reduce
+
+`reduce` をインラインの関数（アロー関数・関数式）で使用する場合は、直前に意図を説明するコメントを記述してください。
+
+```typescript
+// 各値の合計を計算する
+const total = values.reduce((acc, val) => acc + val, 0);
+```
+
+### ESLint 無効化コメント
+
+`eslint-disable-line` や `eslint-disable-next-line` を使用する際は、同じコメント内に無効化の理由を記述してください。
+
+```typescript
+// 誤
+const x = value; // eslint-disable-line no-unused-vars
+
+// 正
+const x = value; // eslint-disable-line no-unused-vars -- ライブラリの型定義の都合上必要
+```
+
+## テストコード
+
+### テストのスキップ
+
+`skip` する場合は、直前に理由と解除予定時期を説明するコメントを記述してください。
+
+```typescript
+// 2026-04-01 までに対応予定。依存ライブラリの不具合のため一時スキップ。
+it.skip("should work", () => { ... });
+```
+
+### フレイキーテスト対策
+
+- 固定時間の待機（`sleep()` 等）は原則禁止。特定の状態・表示になるまで待機する
+- 取得した DOM 要素を変数にキャッシュしない（再レンダリング後に古い参照になる場合がある）
+- 自動待機するクエリを基本とする
+- アサーションはリトライ付きで検証する
+- デバッグ用の一時停止処理は本番コードにコミットしない
+
+## セキュリティ
+
+- API キー・パスワード・シークレットをリポジトリにコミットしない
+- シークレットはシークレット管理サービスに保存する
+- クライアントコードにシークレットを含めない（フロントエンドビルドは公開アクセス可能なため）
+- 機密データは適切なアクセス制御と暗号化を行う
 
 ## コミットメッセージ
 

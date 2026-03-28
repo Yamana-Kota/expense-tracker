@@ -11,8 +11,8 @@ import SettingsTab from '@/components/tabs/SettingsTab';
 type Tab = 'receipt' | 'manual' | 'analytics' | 'settings';
 
 const tabs = [
-  { id: 'receipt' as Tab, label: 'レシート登録', icon: Camera },
   { id: 'manual' as Tab, label: '手動登録', icon: PenLine },
+  { id: 'receipt' as Tab, label: 'レシート登録', icon: Camera },
   { id: 'analytics' as Tab, label: 'グラフ', icon: BarChart3 },
   { id: 'settings' as Tab, label: '設定', icon: Settings },
 ];
@@ -24,7 +24,7 @@ const tabs = [
  * 選択中のタブを state で保持し、対応するタブコンポーネントを条件付きレンダリングする。
  */
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('receipt');
+  const [activeTab, setActiveTab] = useState<Tab>('manual');
   const handleTabSelect = useCallback((id: string) => {
     setActiveTab(id as Tab);
   }, []);

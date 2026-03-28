@@ -13,7 +13,7 @@ const balance = totalIncome - totalExpense;
 export default function SummaryCards() {
   return (
     <div className="grid grid-cols-3 gap-3">
-      <div className="rounded-2xl bg-white p-4 shadow-sm">
+      <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
         <div className="mb-1.5 flex items-center gap-1.5">
           <TrendingDown className="h-4 w-4 text-red-400" />
           <span className="text-xs font-medium text-gray-500">支出</span>
@@ -22,7 +22,7 @@ export default function SummaryCards() {
           ¥{(totalExpense / 10000).toFixed(1)}万
         </p>
       </div>
-      <div className="rounded-2xl bg-white p-4 shadow-sm">
+      <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
         <div className="mb-1.5 flex items-center gap-1.5">
           <TrendingUp className="h-4 w-4 text-green-500" />
           <span className="text-xs font-medium text-gray-500">収入</span>
@@ -32,7 +32,7 @@ export default function SummaryCards() {
         </p>
       </div>
       <div
-        className={`rounded-2xl p-4 shadow-sm ${balance >= 0 ? 'bg-green-50' : 'bg-red-50'}`}
+        className={`rounded-2xl px-4 py-3 shadow-sm ${balance >= 0 ? 'bg-green-50' : 'bg-red-50'}`}
       >
         <div className="mb-1.5 flex items-center gap-1.5">
           <Wallet
