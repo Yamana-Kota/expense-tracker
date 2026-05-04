@@ -1,0 +1,2294 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auto Expense - コード解説ドキュメント</title>
+  <style>
+    /* ==============================
+       リセット & ベース
+    ============================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      line-height: 1.7;
+      font-size: 15px;
+    }
+    a { color: #2563eb; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.875em;
+    }
+
+    /* ==============================
+       サイドナビゲーション
+    ============================== */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: 260px;
+      height: 100vh;
+      overflow-y: auto;
+      background: #1e293b;
+      color: #cbd5e1;
+      padding: 24px 0;
+      z-index: 100;
+    }
+    .sidebar-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      padding: 0 20px 16px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sidebar-title .badge {
+      background: #2563eb;
+      color: #fff;
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 9999px;
+    }
+    .nav-section {
+      padding: 12px 20px 4px;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      font-weight: 700;
+    }
+    .sidebar nav a {
+      display: block;
+      padding: 6px 20px;
+      color: #94a3b8;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .sidebar nav a:hover {
+      color: #f1f5f9;
+      background: #334155;
+      border-left-color: #2563eb;
+      text-decoration: none;
+    }
+    .sidebar nav a.sub {
+      padding-left: 32px;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+    .sidebar nav a.sub:hover { color: #94a3b8; }
+
+    /* ==============================
+       メインコンテンツ
+    ============================== */
+    .main {
+      margin-left: 260px;
+      padding: 40px 48px 80px;
+      max-width: 1040px;
+    }
+
+    /* ==============================
+       見出し
+    ============================== */
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 56px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    h2::before {
+      content: "# ";
+      color: #2563eb;
+    }
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 32px 0 12px;
+    }
+    h3::before {
+      content: "## ";
+      color: #94a3b8;
+      font-weight: 400;
+    }
+    h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #334155;
+      margin: 20px 0 8px;
+    }
+
+    /* ==============================
+       段落・リスト
+    ============================== */
+    p { margin-bottom: 12px; color: #334155; }
+    ul, ol { margin: 8px 0 16px 24px; }
+    li { margin-bottom: 6px; color: #334155; }
+    li code, p code {
+      background: #e2e8f0;
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #dc2626;
+    }
+
+    /* ==============================
+       コードブロック
+    ============================== */
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px 24px;
+      border-radius: 10px;
+      overflow-x: auto;
+      margin: 16px 0 24px;
+      font-size: 0.85rem;
+      line-height: 1.65;
+      border: 1px solid #1e293b;
+    }
+    pre code { color: inherit; background: none; padding: 0; font-size: inherit; }
+
+    /* シンタックスハイライト風カラー */
+    .kw { color: #c084fc; }   /* keyword: const, type, function, export... */
+    .ty { color: #34d399; }   /* type name */
+    .st { color: #fbbf24; }   /* string */
+    .cm { color: #64748b; }   /* comment */
+    .fn { color: #60a5fa; }   /* function name */
+    .nu { color: #f9a8d4; }   /* number */
+    .at { color: #fb923c; }   /* attribute / tag */
+    .hl { background: #1e3a5f; display: block; margin: 0 -24px; padding: 0 24px; }
+
+    /* ==============================
+       ボックス・カード
+    ============================== */
+    .card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+    .callout {
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 16px 0 24px;
+      display: flex;
+      gap: 12px;
+    }
+    .callout-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .callout.info    { background: #eff6ff; border-left: 4px solid #2563eb; }
+    .callout.tip     { background: #f0fdf4; border-left: 4px solid #16a34a; }
+    .callout.warning { background: #fffbeb; border-left: 4px solid #d97706; }
+    .callout.danger  { background: #fef2f2; border-left: 4px solid #dc2626; }
+    .callout p { margin: 0; font-size: 0.9rem; }
+
+    /* ==============================
+       バッジ・タグ
+    ============================== */
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 4px;
+    }
+    .tag-blue   { background: #dbeafe; color: #1d4ed8; }
+    .tag-green  { background: #dcfce7; color: #15803d; }
+    .tag-purple { background: #f3e8ff; color: #7e22ce; }
+    .tag-orange { background: #ffedd5; color: #c2410c; }
+    .tag-gray   { background: #f1f5f9; color: #475569; }
+    .tag-red    { background: #fee2e2; color: #b91c1c; }
+
+    /* ==============================
+       ファイルツリー
+    ============================== */
+    .file-tree {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px 24px;
+      border-radius: 10px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      line-height: 1.8;
+      margin: 16px 0 24px;
+    }
+    .file-tree .folder { color: #60a5fa; }
+    .file-tree .file   { color: #a5b4fc; }
+    .file-tree .note   { color: #64748b; font-size: 0.8rem; }
+
+    /* ==============================
+       データフロー図
+    ============================== */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+      margin: 16px 0 24px;
+      padding: 20px 24px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.85rem;
+    }
+    .flow-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-weight: 600;
+      color: #1e293b;
+      min-width: 280px;
+    }
+    .flow-item .icon { font-size: 1.1rem; }
+    .flow-arrow {
+      margin-left: 32px;
+      color: #2563eb;
+      font-size: 1.2rem;
+      line-height: 1;
+      padding: 2px 0;
+    }
+    .flow-label {
+      margin-left: 48px;
+      color: #64748b;
+      font-size: 0.78rem;
+      padding: 2px 0;
+    }
+
+    /* ==============================
+       コンポーネント図
+    ============================== */
+    .component-tree {
+      font-family: monospace;
+      font-size: 0.88rem;
+      background: #f1f5f9;
+      padding: 20px 24px;
+      border-radius: 10px;
+      line-height: 1.9;
+      margin: 16px 0 24px;
+      color: #1e293b;
+    }
+    .ct-comp   { color: #2563eb; font-weight: 700; }
+    .ct-server { color: #15803d; }
+    .ct-client { color: #b45309; }
+    .ct-note   { color: #64748b; font-size: 0.8rem; }
+
+    /* ==============================
+       プロパティテーブル
+    ============================== */
+    .prop-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 24px;
+      font-size: 0.87rem;
+    }
+    .prop-table th {
+      background: #1e293b;
+      color: #f1f5f9;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+    }
+    .prop-table td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+    .prop-table tr:nth-child(even) td { background: #f8fafc; }
+    .prop-table tr:hover td { background: #eff6ff; }
+    .prop-table code {
+      font-size: 0.82rem;
+      background: #e2e8f0;
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #7c3aed;
+    }
+
+    /* ==============================
+       ヒーローヘッダー
+    ============================== */
+    .hero {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%);
+      color: #fff;
+      padding: 40px 48px 36px;
+      margin: -40px -48px 0;
+      border-radius: 0 0 16px 16px;
+    }
+    .hero .app-name {
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+    .hero .subtitle {
+      font-size: 1rem;
+      opacity: 0.8;
+      margin-bottom: 20px;
+    }
+    .hero .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .hero .tags span {
+      background: rgba(255,255,255,0.15);
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      backdrop-filter: blur(4px);
+    }
+
+    /* ==============================
+       目次カード
+    ============================== */
+    .toc-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin: 32px 0;
+    }
+    .toc-card h2 {
+      margin: 0 0 16px;
+      border: none;
+      font-size: 1.1rem;
+    }
+    .toc-card h2::before { content: none; }
+    .toc-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .toc-grid a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #334155;
+      transition: all 0.15s;
+    }
+    .toc-grid a:hover {
+      background: #eff6ff;
+      color: #1d4ed8;
+      text-decoration: none;
+    }
+    .toc-num {
+      background: #2563eb;
+      color: #fff;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* ==============================
+       状態一覧
+    ============================== */
+    .state-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 24px;
+      font-size: 0.87rem;
+    }
+    .state-table th {
+      background: #7c3aed;
+      color: #fff;
+      padding: 10px 14px;
+      text-align: left;
+    }
+    .state-table td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+    .state-table tr:nth-child(even) td { background: #faf5ff; }
+
+    /* ==============================
+       スクロールアップボタン
+    ============================== */
+    .back-to-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 48px;
+      padding: 10px 20px;
+      background: #1e293b;
+      color: #fff;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: background 0.15s;
+    }
+    .back-to-top:hover {
+      background: #0f172a;
+      text-decoration: none;
+    }
+
+    /* ==============================
+       区切り線
+    ============================== */
+    .divider {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 40px 0;
+    }
+
+    /* ==============================
+       レスポンシブ
+    ============================== */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 24px 20px 60px; }
+      .hero { margin: -24px -20px 0; padding: 28px 20px 24px; }
+      .toc-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ==============================
+     サイドナビゲーション
+============================== -->
+<aside class="sidebar">
+  <div class="sidebar-title">
+    📊 Auto Expense
+    <span class="badge">Docs</span>
+  </div>
+  <nav>
+    <div class="nav-section">はじめに</div>
+    <a href="#overview">1. プロジェクト概要</a>
+    <a href="#tech-stack">2. 技術スタック</a>
+    <a href="#directory">3. ディレクトリ構成</a>
+
+    <div class="nav-section">アーキテクチャ</div>
+    <a href="#architecture">4. コンポーネント設計</a>
+    <a href="#routing">5. ルーティング</a>
+    <a href="#state">6. 状態管理</a>
+    <a href="#dataflow">7. データフロー</a>
+
+    <div class="nav-section">認証</div>
+    <a href="#auth">9b. 認証システム</a>
+    <a class="sub" href="#auth">auth.ts</a>
+    <a class="sub" href="#auth">Providers</a>
+    <a class="sub" href="#auth">SignInButton</a>
+
+    <div class="nav-section">コンポーネント解説</div>
+    <a href="#comp-layout">8. Layout</a>
+    <a href="#comp-header">9. Header</a>
+    <a href="#comp-tab-button">10. TabButton</a>
+    <a href="#comp-dashboard">11. DashboardPage</a>
+    <a href="#comp-receipt">12. ReceiptTab</a>
+    <a href="#comp-manual">13. ManualEntryTab</a>
+    <a href="#comp-day-cell">14. DayCell</a>
+    <a href="#comp-entry-row">15. EntryRow</a>
+    <a href="#comp-analytics">16. AnalyticsTab</a>
+    <a href="#comp-summary">17. SummaryCards</a>
+    <a href="#comp-category">18. CategoryExpenseChart</a>
+    <a href="#comp-monthly">19. MonthlyTrendChart</a>
+    <a href="#comp-asset">20. AssetTrendChart</a>
+    <a href="#comp-settings">21. SettingsTab</a>
+
+    <div class="nav-section">TypeScript</div>
+    <a href="#types">22. 型定義一覧</a>
+
+    <div class="nav-section">スタイリング</div>
+    <a href="#styling">23. スタイリング戦略</a>
+
+    <div class="nav-section">React 基礎</div>
+    <a href="#react-hooks">24. 使われているフック</a>
+    <a href="#react-patterns">25. Reactパターン解説</a>
+  </nav>
+</aside>
+
+<!-- ==============================
+     メインコンテンツ
+============================== -->
+<main class="main">
+
+  <!-- ヒーロー -->
+  <div class="hero" id="top">
+    <div class="app-name">📊 Auto Expense — コード解説ドキュメント</div>
+    <div class="subtitle">React × TypeScript 初学者のためのコードウォークスルー</div>
+    <div class="tags">
+      <span>⚛️ React 19</span>
+      <span>🟦 TypeScript 5</span>
+      <span>▲ Next.js</span>
+      <span>💨 Tailwind CSS</span>
+    </div>
+  </div>
+
+  <!-- 目次 -->
+  <div class="toc-card">
+    <h2>📋 目次</h2>
+    <div class="toc-grid">
+      <a href="#overview"><span class="toc-num">1</span>プロジェクト概要</a>
+      <a href="#tech-stack"><span class="toc-num">2</span>技術スタック</a>
+      <a href="#directory"><span class="toc-num">3</span>ディレクトリ構成</a>
+      <a href="#architecture"><span class="toc-num">4</span>コンポーネント設計</a>
+      <a href="#routing"><span class="toc-num">5</span>ルーティング</a>
+      <a href="#state"><span class="toc-num">6</span>状態管理</a>
+      <a href="#dataflow"><span class="toc-num">7</span>データフロー</a>
+      <a href="#comp-manual"><span class="toc-num">8</span>ManualEntryTab（最重要）</a>
+      <a href="#comp-analytics"><span class="toc-num">9</span>AnalyticsTab</a>
+      <a href="#types"><span class="toc-num">10</span>型定義一覧</a>
+      <a href="#styling"><span class="toc-num">11</span>スタイリング戦略</a>
+      <a href="#react-hooks"><span class="toc-num">12</span>Reactフック解説</a>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       1. プロジェクト概要
+  ================================================================ -->
+  <h2 id="overview">1. プロジェクト概要</h2>
+
+  <p>
+    <strong>Auto Expense</strong> は、家計・支出を管理するWebアプリです。
+    レシートを撮影してAIで自動読み取りしたり、手動でカレンダーに収入・支出を記録したり、
+    グラフで収支の傾向を分析できるツールを目指しています。
+  </p>
+
+  <div class="card">
+    <h4>🎯 主な機能（現時点）</h4>
+    <ul>
+      <li>🔐 <strong>Amazon Cognito 認証</strong> — NextAuth.js v5 を使った OAuth ログイン。未認証ユーザーはミドルウェアでダッシュボードへのアクセスをブロック</li>
+      <li>📅 <strong>カレンダー形式の手動入力</strong> — 日付を選択して収入/支出を登録・削除。上部に月次サマリーカード（支出・収入・収支）を表示</li>
+      <li>📊 <strong>分析グラフ</strong> — カテゴリ別支出・月別推移・資産推移を可視化</li>
+      <li>🧾 <strong>レシート登録UI</strong> — プレースホルダー（機能はこれから実装）</li>
+      <li>⚙️ <strong>設定</strong> — Coming Soon</li>
+    </ul>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">ℹ️</span>
+    <p>現時点ではデータはブラウザのメモリ上にのみ存在します。ページをリロードするとデータはリセットされます（バックエンド未実装）。</p>
+  </div>
+
+  <!-- ================================================================
+       2. 技術スタック
+  ================================================================ -->
+  <h2 id="tech-stack">2. 技術スタック</h2>
+
+  <div class="card">
+    <table class="prop-table">
+      <thead>
+        <tr><th>技術</th><th>役割</th><th>バージョン</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Next.js</strong></td>
+          <td>フレームワーク。App Router でページとレイアウトを管理する</td>
+          <td><code>16.1.6</code></td>
+        </tr>
+        <tr>
+          <td><strong>React</strong></td>
+          <td>UIコンポーネントを構築するライブラリ</td>
+          <td><code>19.2.3</code></td>
+        </tr>
+        <tr>
+          <td><strong>TypeScript</strong></td>
+          <td>型安全なJavaScript。バグを事前に防げる</td>
+          <td><code>5.x</code></td>
+        </tr>
+        <tr>
+          <td><strong>Tailwind CSS</strong></td>
+          <td>ユーティリティクラスでスタイルを当てるCSSフレームワーク</td>
+          <td><code>4.x</code></td>
+        </tr>
+        <tr>
+          <td><strong>Lucide React</strong></td>
+          <td>SVGアイコンセット（Camera, Settings など）</td>
+          <td><code>0.575.0</code></td>
+        </tr>
+        <tr>
+          <td><strong>NextAuth.js v5</strong></td>
+          <td>認証ライブラリ。Amazon Cognito との OAuth 連携を管理する</td>
+          <td><code>5.0.0-beta</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p><strong>Reduxなどの状態管理ライブラリは使っていません。</strong> Reactが標準で提供する <code>useState</code> / <code>useCallback</code> だけで状態を管理しています。シンプルなアプリ開発の好例です。</p>
+  </div>
+
+  <!-- ================================================================
+       3. ディレクトリ構成
+  ================================================================ -->
+  <h2 id="directory">3. ディレクトリ構成</h2>
+
+  <div class="file-tree">
+    <span class="folder">expense-tracker/</span><br>
+    ├── <span class="file">auth.ts</span>        <span class="note">← NextAuth 設定（Cognito プロバイダー・handlers・auth 関数のエクスポート）</span><br>
+    ├── <span class="file">middleware.ts</span>  <span class="note">← /dashboard 配下を認証必須にするミドルウェア</span><br>
+    │<br>
+    ├── <span class="folder">app/</span> <span class="note">← Next.js App Router のルート</span><br>
+    │   ├── <span class="file">layout.tsx</span>     <span class="note">← 全ページ共通のHTMLラッパー（Providers で SessionProvider を注入）</span><br>
+    │   ├── <span class="file">page.tsx</span>       <span class="note">← ランディングページ (URL: /)。未ログイン時の入口</span><br>
+    │   ├── <span class="file">globals.css</span>    <span class="note">← グローバルCSS・カスタムクラス定義</span><br>
+    │   ├── <span class="folder">api/</span><br>
+    │   │   └── <span class="folder">auth/</span><br>
+    │   │       └── <span class="folder">[...nextauth]/</span><br>
+    │   │           └── <span class="file">route.ts</span> <span class="note">← NextAuth の GET/POST ハンドラー (URL: /api/auth/*)</span><br>
+    │   └── <span class="folder">dashboard/</span><br>
+    │       ├── <span class="file">layout.tsx</span> <span class="note">← ダッシュボード共通レイアウト（Header含む）</span><br>
+    │       └── <span class="file">page.tsx</span>   <span class="note">← メインダッシュボード (URL: /dashboard)</span><br>
+    │<br>
+    ├── <span class="folder">components/</span> <span class="note">← 再利用可能なUIコンポーネント</span><br>
+    │   ├── <span class="file">Header.tsx</span>             <span class="note">← ヘッダーバー（ロゴ・認証状態別ボタン）</span><br>
+    │   ├── <span class="file">Providers.tsx</span>          <span class="note">← SessionProvider ラッパー（クライアントコンポーネント）</span><br>
+    │   ├── <span class="file">SignInButton.tsx</span>        <span class="note">← Cognito サインインボタン（クライアントコンポーネント）</span><br>
+    │   ├── <span class="file">TabButton.tsx</span>          <span class="note">← タブ切り替えボタン1つ分</span><br>
+    │   └── <span class="folder">tabs/</span><br>
+    │       ├── <span class="file">ReceiptTab.tsx</span>     <span class="note">← レシート登録タブ（プレースホルダー）</span><br>
+    │       ├── <span class="file">ManualEntryTab.tsx</span> <span class="note">← 手動登録タブ（カレンダー＋入力フォーム）</span><br>
+    │       ├── <span class="file">DayCell.tsx</span>        <span class="note">← カレンダーの1マス</span><br>
+    │       ├── <span class="file">EntryRow.tsx</span>       <span class="note">← 収支エントリ1行（削除ボタン付き）</span><br>
+    │       ├── <span class="file">SettingsTab.tsx</span>    <span class="note">← 設定タブ（Coming Soon）</span><br>
+    │       └── <span class="folder">analytics/</span><br>
+    │           ├── <span class="file">SummaryCards.tsx</span>          <span class="note">← 支出/収入/収支の3枚カード</span><br>
+    │           ├── <span class="file">CategoryExpenseChart.tsx</span>  <span class="note">← カテゴリ別支出グラフ</span><br>
+    │           ├── <span class="file">MonthlyTrendChart.tsx</span>     <span class="note">← 月別収支推移グラフ（棒グラフ）</span><br>
+    │           └── <span class="file">AssetTrendChart.tsx</span>       <span class="note">← 資産推移グラフ（折れ線グラフ）</span><br>
+    │<br>
+    └── <span class="folder">public/</span> <span class="note">← 画像などの静的ファイル</span>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">📌</span>
+    <p><strong>App Router の仕組み：</strong> <code>app/</code> フォルダ内のフォルダ名がそのままURLになります。<code>app/dashboard/page.tsx</code> は <code>/dashboard</code> というURLで表示されます。</p>
+  </div>
+
+  <!-- ================================================================
+       4. コンポーネント設計
+  ================================================================ -->
+  <h2 id="architecture">4. コンポーネント設計（全体像）</h2>
+
+  <p>コンポーネントの親子関係を図で示します。インデントが深いほど「子コンポーネント」です。</p>
+
+  <div class="component-tree">
+    <span class="ct-comp">RootLayout</span> <span class="ct-server">（サーバーコンポーネント）</span><br>
+    └── <span class="ct-comp">Providers</span> <span class="ct-client">（クライアントコンポーネント ← SessionProvider ラッパー）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;└── <span class="ct-comp">HomePage</span> <span class="ct-server">（サーバーコンポーネント / URL: /）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="ct-comp">SignInButton</span> <span class="ct-client">（クライアントコンポーネント ← Cognito サインイン）</span><br>
+    <br>
+    <span class="ct-comp">RootLayout</span><br>
+    └── <span class="ct-comp">Providers</span> <span class="ct-client">（クライアントコンポーネント）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;└── <span class="ct-comp">DashboardLayout</span> <span class="ct-server">（サーバーコンポーネント）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="ct-comp">Header</span> <span class="ct-client">（クライアントコンポーネント ← useSession で認証状態を取得）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="ct-comp">DashboardPage</span> <span class="ct-client">（クライアントコンポーネント ← 'use client'）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="ct-comp">TabButton</span> × 4 <span class="ct-client">（クライアントコンポーネント）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="ct-comp">ReceiptTab</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="ct-comp">ManualEntryTab</span> <span class="ct-client">（クライアントコンポーネント）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="ct-comp">DayCell</span> × 最大42 <span class="ct-client">（クライアントコンポーネント）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── <span class="ct-comp">EntryRow</span> × n <span class="ct-client">（クライアントコンポーネント）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="ct-comp">AnalyticsTab</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="ct-comp">SummaryCards</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="ct-comp">CategoryExpenseChart</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="ct-comp">MonthlyTrendChart</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── <span class="ct-comp">AssetTrendChart</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="ct-comp">SettingsTab</span>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p>
+      <strong>サーバーコンポーネントとクライアントコンポーネントの違い：</strong><br>
+      サーバーコンポーネントはサーバー上でHTMLが生成され、ブラウザに届きます（高速・SEO有利）。<br>
+      <code>'use client'</code> と書かれたクライアントコンポーネントだけが <code>useState</code> や <code>onClick</code> などのブラウザ機能を使えます。
+    </p>
+  </div>
+
+  <!-- ================================================================
+       5. ルーティング
+  ================================================================ -->
+  <h2 id="routing">5. ルーティング（Next.js App Router）</h2>
+
+  <p>Next.js の App Router では、<strong>フォルダ構造 = URLの構造</strong>になります。</p>
+
+  <table class="prop-table">
+    <thead><tr><th>ファイル</th><th>URL</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><code>app/page.tsx</code></td><td><code>/</code></td><td>ランディングページ（未ログイン時の入口、Cognito サインインボタン）</td></tr>
+      <tr><td><code>app/dashboard/page.tsx</code></td><td><code>/dashboard</code></td><td>メインのダッシュボード画面（認証必須）</td></tr>
+      <tr><td><code>app/api/auth/[...nextauth]/route.ts</code></td><td><code>/api/auth/*</code></td><td>NextAuth が提供する認証 API（コールバック・サインアウトなど）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>middleware.ts によるルート保護</h3>
+  <p>
+    <code>middleware.ts</code> はリクエストがページに到達する前に実行されます。
+    <code>/dashboard</code> 配下へのアクセス時にセッションを確認し、
+    未認証のユーザーはトップページ（<code>/</code>）へリダイレクトします。
+  </p>
+
+  <pre><code><span class="cm">// middleware.ts</span>
+<span class="kw">import</span> { auth } <span class="kw">from</span> <span class="st">'@/auth'</span>
+<span class="kw">import</span> { NextResponse } <span class="kw">from</span> <span class="st">'next/server'</span>
+
+<span class="kw">export default</span> <span class="fn">auth</span>((request) => {
+  <span class="kw">if</span> (!request.auth) {
+    <span class="kw">return</span> NextResponse.<span class="fn">redirect</span>(<span class="kw">new</span> <span class="fn">URL</span>(<span class="st">'/'</span>, request.url))
+  }
+})
+
+<span class="kw">export const</span> config = {
+  matcher: [<span class="st">'/dashboard/:path*'</span>],  <span class="cm">// このパターンにマッチするURLにのみ適用</span>
+}</code></pre>
+
+  <h3>layout.tsx の役割</h3>
+  <p>
+    同じフォルダ内の <code>layout.tsx</code> は、そのフォルダ以下の全ページを<strong>包むラッパー</strong>です。
+    共通のヘッダーやフッターを置くのに使います。
+  </p>
+
+  <pre><code><span class="cm">// app/dashboard/layout.tsx</span>
+<span class="kw">export default function</span> <span class="fn">DashboardLayout</span>({
+  children,  <span class="cm">// ← 子ページ（DashboardPage など）が入ってくる</span>
+}: {
+  children: React.ReactNode
+}) {
+  <span class="kw">return</span> (
+    <span class="at">&lt;div&gt;</span>
+      <span class="at">&lt;Header /&gt;</span>  <span class="cm">{/* 全ダッシュボードページに共通のヘッダー */}</span>
+      <span class="at">&lt;main&gt;</span>{children}<span class="at">&lt;/main&gt;</span>  <span class="cm">{/* ここに各ページが入る */}</span>
+    <span class="at">&lt;/div&gt;</span>
+  )
+}</code></pre>
+
+  <!-- ================================================================
+       6. 状態管理
+  ================================================================ -->
+  <h2 id="state">6. 状態管理（useState）</h2>
+
+  <p>
+    このアプリは外部の状態管理ライブラリ（ReduxやZustandなど）を使わず、
+    Reactの <code>useState</code> フックだけで状態を管理しています。
+    各コンポーネントが自分に必要な状態だけを持ちます。
+  </p>
+
+  <h3>DashboardPage の状態</h3>
+
+  <pre><code><span class="cm">// app/dashboard/page.tsx</span>
+<span class="kw">const</span> [activeTab, setActiveTab] = <span class="fn">useState</span>&lt;<span class="ty">Tab</span>&gt;(<span class="st">'manual'</span>)
+<span class="cm">//         ↑現在選択中のタブ名  ↑更新関数         ↑初期値は 'manual' タブ</span></code></pre>
+
+  <div class="callout info">
+    <span class="callout-icon">📖</span>
+    <p>
+      <code>useState&lt;Tab&gt;</code> の <code>&lt;Tab&gt;</code> は<strong>TypeScriptのジェネリクス（型パラメータ）</strong>です。
+      この状態が <code>Tab</code> 型の値しか持てないことを宣言しています。
+    </p>
+  </div>
+
+  <h3>ManualEntryTab の状態一覧</h3>
+
+  <table class="state-table">
+    <thead><tr><th>状態名</th><th>型</th><th>役割</th></tr></thead>
+    <tbody>
+      <tr><td><code>currentMonth</code></td><td><code>Date</code></td><td>カレンダーに表示している月</td></tr>
+      <tr><td><code>selectedDate</code></td><td><code>string | null</code></td><td>選択中の日付（"2026-03-20" 形式）</td></tr>
+      <tr><td><code>showForm</code></td><td><code>boolean</code></td><td>入力フォームを表示するか</td></tr>
+      <tr><td><code>entries</code></td><td><code>Entry[]</code></td><td>登録済みの収支エントリ一覧</td></tr>
+      <tr><td><code>entryType</code></td><td><code>EntryType</code></td><td>入力中のエントリが支出か収入か</td></tr>
+      <tr><td><code>category</code></td><td><code>string</code></td><td>選択中のカテゴリ（食費・交通費など）</td></tr>
+      <tr><td><code>amount</code></td><td><code>string</code></td><td>入力中の金額（文字列として管理）</td></tr>
+      <tr><td><code>note</code></td><td><code>string</code></td><td>メモ欄の内容</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warning">
+    <span class="callout-icon">⚠️</span>
+    <p>
+      <strong>なぜ金額を <code>string</code> で管理するの？</strong><br>
+      HTMLの <code>&lt;input type="number"&gt;</code> は値を文字列として返します。
+      ユーザーが何も入力していない場合は <code>""</code>（空文字）になります。
+      これを <code>number</code> で管理しようとすると、空欄の表現が難しくなるため、
+      入力中は <code>string</code> で管理し、保存時に <code>Number(amount)</code> で数値に変換します。
+    </p>
+  </div>
+
+  <!-- ================================================================
+       7. データフロー
+  ================================================================ -->
+  <h2 id="dataflow">7. データフロー（手動登録の例）</h2>
+
+  <p>ユーザーが支出を登録するまでの流れを追ってみます。</p>
+
+  <div class="flow">
+    <div class="flow-item"><span class="icon">👆</span> ユーザーがカレンダーの日付をクリック</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label">DayCell の <code>onSelect</code> コールバックが呼ばれる</div>
+    <div class="flow-item"><span class="icon">📅</span> <code>setSelectedDate(dateStr)</code> が実行される</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label">Reactが再レンダリングを行う</div>
+    <div class="flow-item"><span class="icon">📋</span> 選択日のエントリ一覧とフォームが表示される</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label">ユーザーが金額・カテゴリを入力して「保存」ボタンを押す</div>
+    <div class="flow-item"><span class="icon">💾</span> <code>handleSave()</code> が <code>buildEntry()</code> で Entry オブジェクトを作成</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label"><code>setEntries([...entries, newEntry])</code> でステートを更新</div>
+    <div class="flow-item"><span class="icon">🔄</span> 再レンダリング → カレンダーのマスに金額が表示される</div>
+  </div>
+
+  <pre><code><span class="cm">// handleSave の中身（簡略版）</span>
+<span class="kw">function</span> <span class="fn">handleSave</span>() {
+  <span class="kw">if</span> (!selectedDate || !amount) <span class="kw">return</span>  <span class="cm">// 未入力チェック</span>
+
+  <span class="kw">const</span> newEntry = <span class="fn">buildEntry</span>({
+    entries,
+    date: selectedDate,
+    type: entryType,
+    category,
+    amount: <span class="fn">Number</span>(amount),   <span class="cm">// 文字列 → 数値に変換</span>
+    note,
+  })
+
+  <span class="fn">setEntries</span>([...entries, newEntry])  <span class="cm">// 配列を新しく作って更新（イミュータブル）</span>
+  <span class="fn">setAmount</span>(<span class="st">''</span>)   <span class="cm">// フォームをリセット</span>
+  <span class="fn">setNote</span>(<span class="st">''</span>)
+}</code></pre>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p>
+      <strong>イミュータブル（不変）な更新：</strong>
+      <code>[...entries, newEntry]</code> は「既存の配列に要素を追加した<em>新しい配列</em>を作る」書き方です。
+      <code>entries.push(newEntry)</code> のように元の配列を直接変更してはいけません。
+      Reactは「参照が変わったかどうか」で再レンダリングを判断するため、
+      元の配列を変更しても変化を検知できないからです。
+    </p>
+  </div>
+
+  <h3>「追加」ボタンを押したときの流れ</h3>
+
+  <div class="flow">
+    <div class="flow-item"><span class="icon">👆</span> ユーザーが「追加」ボタンをクリック</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label"><code>handleShowAddForm()</code> が呼ばれる</div>
+    <div class="flow-item"><span class="icon">📝</span> <code>setShowForm(true)</code>、フォームの各フィールドを初期値にリセット</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label">Reactが再レンダリング → <code>showForm === true</code> なので入力フォームが表示される</div>
+    <div class="flow-item"><span class="icon">🔘</span> 支出/収入ボタンを押すと <code>handleSelectExpense</code> / <code>handleSelectIncome</code> が呼ばれる</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label"><code>setEntryType</code> と <code>setCategory(resolveDefaultCategory(...))</code> でカテゴリも自動で切り替わる</div>
+    <div class="flow-item"><span class="icon">⌨️</span> 金額を入力するたびに <code>handleAmountChange</code> → <code>setAmount(event.target.value)</code></div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label">金額が空か 0 以下のとき「保存」ボタンは <code>disabled</code> になり押せない</div>
+    <div class="flow-item"><span class="icon">💾</span> 「保存」ボタンを押す（または Enter）→ <code>handleFormSubmit</code> → <code>handleSave</code></div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label"><code>buildEntry(...)</code> でエントリオブジェクトを生成 → <code>setEntries([...previous, entry])</code></div>
+    <div class="flow-item"><span class="icon">🔄</span> 再レンダリング → カレンダーのマスに金額が反映され、フォームが閉じる</div>
+  </div>
+
+  <h3>エントリを削除したときの流れ</h3>
+
+  <div class="flow">
+    <div class="flow-item"><span class="icon">🗑️</span> <code>EntryRow</code> の削除ボタンをクリック</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label"><code>EntryRow</code> 内の <code>handleDelete()</code> が呼ばれる（useCallback でメモ化済み）</div>
+    <div class="flow-item"><span class="icon">📡</span> <code>onDelete(entry.id)</code> でIDを親（ManualEntryTab）へ伝える</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label">ManualEntryTab の <code>handleDeleteEntry(id)</code> が受け取る</div>
+    <div class="flow-item"><span class="icon">🔧</span> <code>setEntries(previous =&gt; previous.filter(e =&gt; e.id !== id))</code></div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label">そのIDを除いた新しい配列で state が更新される</div>
+    <div class="flow-item"><span class="icon">🔄</span> 再レンダリング → エントリ一覧から行が消え、カレンダーの金額も更新される</div>
+  </div>
+
+  <h3>タブを切り替えたときの流れ</h3>
+
+  <div class="flow">
+    <div class="flow-item"><span class="icon">🖱️</span> ユーザーがタブボタン（例:「グラフ」）をクリック</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label"><code>TabButton</code> 内の <code>handleClick()</code> が呼ばれる</div>
+    <div class="flow-item"><span class="icon">📡</span> <code>onSelect('analytics')</code> で id を親（DashboardPage）へ伝える</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label">DashboardPage の <code>handleTabSelect(id)</code> が <code>setActiveTab('analytics')</code> を呼ぶ</div>
+    <div class="flow-item"><span class="icon">🔄</span> 再レンダリング → <code>activeTab === 'analytics'</code> が true になり <code>AnalyticsTab</code> が表示される</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label">他のタブはアンマウントされる（<code>&& 演算子</code> で false になるため）</div>
+    <div class="flow-item"><span class="icon">🎨</span> 選択中タブのボタンは <code>isActive === true</code> でアクティブなスタイルになる</div>
+  </div>
+
+  <h3>前の月・次の月ボタンを押したときの流れ</h3>
+
+  <div class="flow">
+    <div class="flow-item"><span class="icon">⬅️</span> 「前の月」ボタンをクリック</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label"><code>handlePrevMonth()</code> が呼ばれる</div>
+    <div class="flow-item"><span class="icon">📅</span> <code>setCurrentMonth(prev =&gt; new Date(prev.getFullYear(), prev.getMonth() - 1, 1))</code></div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label">month が 1 つ減った新しい Date オブジェクトで state が更新される</div>
+    <div class="flow-item"><span class="icon">🔄</span> 再レンダリング → カレンダーのグリッドが再計算されてその月の日付が並ぶ</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-label"><code>getMonthlyTotals</code> もその月で再計算され、上部サマリーカードの金額が変わる</div>
+    <div class="flow-item"><span class="icon">🔒</span> 「次の月」ボタンは <code>isMaxMonth === true</code> になると <code>disabled</code> が付いて押せなくなる</div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ================================================================
+       8. Layout コンポーネント
+  ================================================================ -->
+  <h2 id="comp-layout">8. Layout コンポーネント群</h2>
+
+  <h3>app/layout.tsx（ルートレイアウト）</h3>
+  <p>全ページを包む最上位のHTMLテンプレートです。<code>Providers</code> コンポーネントで <code>children</code> を包むことで、アプリ全体で <code>useSession</code> によるセッション取得が可能になります。</p>
+  <pre><code><span class="kw">import</span> Providers <span class="kw">from</span> <span class="st">'@/components/Providers'</span>
+
+<span class="kw">export default function</span> <span class="fn">RootLayout</span>({ children }: { children: React.ReactNode }) {
+  <span class="kw">return</span> (
+    <span class="at">&lt;html</span> lang=<span class="st">"ja"</span><span class="at">&gt;</span>         <span class="cm">{/* 言語設定（スクリーンリーダー対応） */}</span>
+      <span class="at">&lt;body</span> className={<span class="st">`${geistSans.variable} antialiased`</span>}<span class="at">&gt;</span>
+        <span class="at">&lt;Providers&gt;</span>{children}<span class="at">&lt;/Providers&gt;</span>  <span class="cm">{/* SessionProvider を全体に提供 */}</span>
+      <span class="at">&lt;/body&gt;</span>
+    <span class="at">&lt;/html&gt;</span>
+  )
+}</code></pre>
+
+  <h3>app/dashboard/layout.tsx（ダッシュボードレイアウト）</h3>
+  <p>ダッシュボード配下の全ページにHeaderを追加します。</p>
+
+  <!-- ================================================================
+       9. Header コンポーネント
+  ================================================================ -->
+  <h2 id="comp-header">9. Header コンポーネント</h2>
+
+  <span class="tag tag-gray">components/Header.tsx</span>
+  <span class="tag tag-orange">クライアントコンポーネント</span>
+
+  <p>アプリ上部に表示されるナビゲーションバーです。<code>useSession</code> で認証状態を取得し、ログイン済みのときは「ログアウト」ボタン、未ログインのときは「ログイン」ボタンを表示します。</p>
+
+  <div class="card">
+    <h4>表示内容</h4>
+    <ul>
+      <li>左側：レシートアイコン＋「Auto Expense」のロゴ文字（<code>/dashboard</code> へのリンク）</li>
+      <li>右側（認証済み）：「ログアウト」ボタン → <code>signOut({ callbackUrl: '/' })</code></li>
+      <li>右側（未認証）：「ログイン」ボタン → <code>signIn('cognito', { callbackUrl: '/dashboard' })</code></li>
+    </ul>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">📖</span>
+    <p>
+      <strong>なぜクライアントコンポーネントにするの？</strong><br>
+      <code>useSession</code>（next-auth/react）はブラウザ上でセッションを取得するフックです。
+      フックはクライアントコンポーネントでしか使えないため、<code>'use client'</code> が必要です。
+    </p>
+  </div>
+
+  <pre><code><span class="st">'use client'</span>
+
+<span class="kw">import</span> { useSession, signIn, signOut } <span class="kw">from</span> <span class="st">'next-auth/react'</span>
+
+<span class="kw">export default function</span> <span class="fn">Header</span>() {
+  <span class="kw">const</span> { status } = <span class="fn">useSession</span>()  <span class="cm">// 'loading' | 'authenticated' | 'unauthenticated'</span>
+
+  <span class="kw">const</span> handleSignIn = <span class="fn">useCallback</span>(() => {
+    <span class="kw">void</span> <span class="fn">signIn</span>(<span class="st">'cognito'</span>, { callbackUrl: <span class="st">'/dashboard'</span> })
+  }, [])
+
+  <span class="kw">const</span> handleSignOut = <span class="fn">useCallback</span>(() => {
+    <span class="kw">void</span> <span class="fn">signOut</span>({ callbackUrl: <span class="st">'/'</span> })
+  }, [])
+
+  <span class="kw">return</span> (
+    <span class="at">&lt;header&gt;</span>
+      <span class="at">&lt;Link</span> href=<span class="st">"/dashboard"</span><span class="at">&gt;</span>
+        <span class="at">&lt;Receipt /&gt;</span>
+        <span class="at">&lt;h1&gt;</span>Auto Expense<span class="at">&lt;/h1&gt;</span>
+      <span class="at">&lt;/Link&gt;</span>
+
+      {status === <span class="st">'authenticated'</span> && (
+        <span class="at">&lt;button</span> onClick={handleSignOut}<span class="at">&gt;</span>
+          <span class="at">&lt;LogOut /&gt;</span> <span class="at">&lt;span&gt;</span>ログアウト<span class="at">&lt;/span&gt;</span>
+        <span class="at">&lt;/button&gt;</span>
+      )}
+      {status === <span class="st">'unauthenticated'</span> && (
+        <span class="at">&lt;button</span> onClick={handleSignIn}<span class="at">&gt;</span>
+          <span class="at">&lt;LogIn /&gt;</span> <span class="at">&lt;span&gt;</span>ログイン<span class="at">&lt;/span&gt;</span>
+        <span class="at">&lt;/button&gt;</span>
+      )}
+    <span class="at">&lt;/header&gt;</span>
+  )
+}</code></pre>
+
+  <!-- ================================================================
+       9b. 認証システム（auth.ts / Providers / SignInButton）
+  ================================================================ -->
+  <h2 id="auth">9b. 認証システム</h2>
+
+  <h3>auth.ts — NextAuth 設定</h3>
+
+  <span class="tag tag-gray">auth.ts</span>
+  <span class="tag tag-purple">サーバーサイド</span>
+
+  <p>
+    NextAuth.js v5 の設定ファイルです。Amazon Cognito を OAuth プロバイダーとして登録し、
+    <code>handlers</code>・<code>auth</code>・<code>signIn</code>・<code>signOut</code> をエクスポートします。
+  </p>
+
+  <pre><code><span class="kw">import</span> NextAuth <span class="kw">from</span> <span class="st">'next-auth'</span>
+<span class="kw">import</span> Cognito <span class="kw">from</span> <span class="st">'next-auth/providers/cognito'</span>
+
+<span class="kw">export const</span> { handlers, auth, signIn, signOut } = <span class="fn">NextAuth</span>({
+  providers: [
+    <span class="fn">Cognito</span>({
+      clientId:     process.env.<span class="at">COGNITO_CLIENT_ID</span>!,      <span class="cm">// 環境変数から取得</span>
+      clientSecret: process.env.<span class="at">COGNITO_CLIENT_SECRET</span>!,
+      issuer:       process.env.<span class="at">COGNITO_ISSUER</span>!,
+    }),
+  ],
+  pages: {
+    signIn: <span class="st">'/'</span>,  <span class="cm">// 未認証時のリダイレクト先</span>
+  },
+})</code></pre>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p>
+      <strong>なぜシークレットを直書きしないの？</strong><br>
+      API キーやシークレットをソースコードに書くと、リポジトリ経由で漏洩するリスクがあります。
+      <code>process.env.XXX</code> を使って環境変数から読み込み、値は <code>.env.local</code>（gitignore 済み）に保存します。
+    </p>
+  </div>
+
+  <h3>app/api/auth/[...nextauth]/route.ts — API ルートハンドラー</h3>
+
+  <span class="tag tag-gray">app/api/auth/[...nextauth]/route.ts</span>
+
+  <p>
+    <code>auth.ts</code> からエクスポートした <code>handlers</code> を Next.js の Route Handler として登録します。
+    これだけで <code>/api/auth/callback/cognito</code> などのエンドポイントが自動生成されます。
+  </p>
+
+  <pre><code><span class="kw">import</span> { handlers } <span class="kw">from</span> <span class="st">'@/auth'</span>
+
+<span class="kw">export const</span> { GET, POST } = handlers</code></pre>
+
+  <div class="callout info">
+    <span class="callout-icon">📌</span>
+    <p>
+      <strong><code>[...nextauth]</code> の意味：</strong>
+      Next.js の「キャッチオールルート」です。
+      <code>/api/auth/</code> 以降のパスをすべて1つのファイルで受け取れます。
+      <code>/api/auth/signin</code> や <code>/api/auth/callback/cognito</code> など
+      NextAuth が使う複数のパスを一括で処理します。
+    </p>
+  </div>
+
+  <h3>Providers.tsx — SessionProvider ラッパー</h3>
+
+  <span class="tag tag-gray">components/Providers.tsx</span>
+  <span class="tag tag-orange">クライアントコンポーネント</span>
+
+  <p>
+    App Router ではレイアウト（<code>layout.tsx</code>）がサーバーコンポーネントになるため、
+    クライアントコンポーネントである <code>SessionProvider</code> を直接書けません。
+    そこでこのファイルに切り出し、<code>layout.tsx</code> からインポートします。
+  </p>
+
+  <pre><code><span class="st">'use client'</span>
+
+<span class="kw">import</span> { SessionProvider } <span class="kw">from</span> <span class="st">'next-auth/react'</span>
+
+<span class="kw">export default function</span> <span class="fn">Providers</span>({ children }: { children: React.ReactNode }) {
+  <span class="kw">return</span> <span class="at">&lt;SessionProvider&gt;</span>{children}<span class="at">&lt;/SessionProvider&gt;</span>
+}</code></pre>
+
+  <h3>SignInButton.tsx — Cognito サインインボタン</h3>
+
+  <span class="tag tag-gray">components/SignInButton.tsx</span>
+  <span class="tag tag-orange">クライアントコンポーネント</span>
+
+  <p>
+    ランディングページ（<code>app/page.tsx</code>）に表示するサインインボタンです。
+    <code>page.tsx</code> はサーバーコンポーネントなので、<code>onClick</code> を持つボタンをこのファイルに分離しています。
+    クリック時に <code>signIn('cognito')</code> を呼び出して Cognito の認証フローへ遷移します。
+  </p>
+
+  <pre><code><span class="st">'use client'</span>
+
+<span class="kw">import</span> { signIn } <span class="kw">from</span> <span class="st">'next-auth/react'</span>
+
+<span class="kw">export default function</span> <span class="fn">SignInButton</span>() {
+  <span class="kw">const</span> handleSignIn = <span class="fn">useCallback</span>(() => {
+    <span class="kw">void</span> <span class="fn">signIn</span>(<span class="st">'cognito'</span>, { callbackUrl: <span class="st">'/dashboard'</span> })
+    <span class="cm">// callbackUrl: 認証完了後にリダイレクトするURL</span>
+  }, [])
+
+  <span class="kw">return</span> <span class="at">&lt;button</span> onClick={handleSignIn}<span class="at">&gt;</span>ログイン<span class="at">&lt;/button&gt;</span>
+}</code></pre>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p>
+      <strong><code>void signIn(...)</code> の意味：</strong>
+      <code>signIn</code> は <code>Promise</code> を返しますが、ここでは await せず即座に画面遷移が始まります。
+      <code>void</code> を付けることで「返り値（Promise）を意図的に無視している」ことを明示し、
+      ESLint の <code>no-floating-promises</code> ルールを満たします。
+    </p>
+  </div>
+
+  <!-- ================================================================
+       10. TabButton コンポーネント
+  ================================================================ -->
+  <h2 id="comp-tab-button">10. TabButton コンポーネント</h2>
+
+  <span class="tag tag-gray">components/TabButton.tsx</span>
+  <span class="tag tag-orange">クライアントコンポーネント</span>
+
+  <p>
+    タブナビゲーションの1ボタン分を担当するコンポーネントです。
+    ユーザーがボタンをクリックすると、コンポーネント内の <code>handleClick</code> が呼ばれます。
+    そこから <code>onSelect(id)</code> を通じて親の <code>DashboardPage</code> へIDが伝わり、
+    <code>handleTabSelect</code> が <code>setActiveTab(id)</code> を実行します。
+    その結果 <code>activeTab</code> が更新されて再レンダリングが走り、対応するタブコンテンツが表示されます。
+  </p>
+  <p>
+    また、<code>isActive</code> props の値によってボタンのスタイルが変わります。
+    <code>activeTab === id</code> が <code>true</code> のタブボタンだけ <code>isActive</code> が <code>true</code> になり、
+    アクティブなスタイル（青いアンダーライン等）が適用されます。
+  </p>
+
+  <h3>Props（受け取るプロパティ）</h3>
+  <table class="prop-table">
+    <thead><tr><th>プロパティ名</th><th>型</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td><code>string</code></td><td>タブの識別子（"receipt", "manual" など）</td></tr>
+      <tr><td><code>label</code></td><td><code>string</code></td><td>ボタンに表示するテキスト（"レシート登録" など）</td></tr>
+      <tr><td><code>icon</code></td><td><code>LucideIcon</code></td><td>表示するアイコンコンポーネント</td></tr>
+      <tr><td><code>isActive</code></td><td><code>boolean</code></td><td>このタブが選択中かどうか</td></tr>
+      <tr><td><code>onSelect</code></td><td><code>(id: string) =&gt; void</code></td><td>クリック時に呼ばれるコールバック</td></tr>
+    </tbody>
+  </table>
+
+  <pre><code><span class="cm">/**
+ * タブナビゲーションの各ボタン
+ * @param properties - タブの識別子・ラベル・アイコン・状態・コールバック
+ */</span>
+<span class="kw">export function</span> <span class="fn">TabButton</span>({ id, label, icon: Icon, isActive, onSelect }: <span class="ty">TabButtonProps</span>) {
+  <span class="cm">// useCallback: onSelect が変わらない限り関数を再生成しない（最適化）</span>
+  <span class="kw">const</span> handleClick = <span class="fn">useCallback</span>(() => {
+    <span class="fn">onSelect</span>(id)
+  }, [id, onSelect])  <span class="cm">// ← id か onSelect が変わったら再生成</span>
+
+  <span class="kw">return</span> (
+    <span class="at">&lt;button</span>
+      onClick={handleClick}
+      className={isActive ? <span class="st">'tab-nav__button--active'</span> : <span class="st">'tab-nav__button--inactive'</span>}
+    <span class="at">&gt;</span>
+      <span class="at">&lt;Icon</span> size={<span class="nu">16</span>} <span class="at">/&gt;</span>   <span class="cm">{/* icon プロパティを Icon という大文字変数に代入してJSXで使う */}</span>
+      <span class="at">&lt;span&gt;</span>{label}<span class="at">&lt;/span&gt;</span>
+    <span class="at">&lt;/button&gt;</span>
+  )
+}</code></pre>
+
+  <div class="callout info">
+    <span class="callout-icon">📖</span>
+    <p>
+      <strong><code>icon: Icon</code> の意味：</strong>
+      分割代入で <code>icon</code> というプロパティを受け取り、<code>Icon</code> という変数名に変えています。
+      JSXでコンポーネントを使うには変数名が<strong>大文字から始まる必要</strong>があるため、
+      この変換が必要です（小文字だと通常のHTMLタグとして解釈されます）。
+    </p>
+  </div>
+
+  <!-- ================================================================
+       11. DashboardPage コンポーネント
+  ================================================================ -->
+  <h2 id="comp-dashboard">11. DashboardPage コンポーネント</h2>
+
+  <span class="tag tag-gray">app/dashboard/page.tsx</span>
+  <span class="tag tag-orange">クライアントコンポーネント</span>
+
+  <p>ダッシュボードのメインページです。タブの切り替えと、各タブコンポーネントの表示を管理します。</p>
+
+  <pre><code><span class="st">'use client'</span>  <span class="cm">// useState を使うのでクライアントコンポーネント宣言が必要</span>
+
+<span class="kw">type</span> <span class="ty">Tab</span> = <span class="st">'receipt'</span> | <span class="st">'manual'</span> | <span class="st">'analytics'</span> | <span class="st">'settings'</span>
+<span class="cm">// ↑ ユニオン型：Tab は4つの文字列リテラルのどれかしか取れない</span>
+
+<span class="cm">// タブの定義を配列でまとめる（データ駆動）</span>
+<span class="kw">const</span> tabs = [
+  { id: <span class="st">'manual'</span>    <span class="kw">as</span> <span class="ty">Tab</span>, label: <span class="st">'手動登録'</span>,     icon: PenLine   },
+  { id: <span class="st">'receipt'</span>   <span class="kw">as</span> <span class="ty">Tab</span>, label: <span class="st">'レシート登録'</span>, icon: Camera    },
+  { id: <span class="st">'analytics'</span> <span class="kw">as</span> <span class="ty">Tab</span>, label: <span class="st">'グラフ'</span>,       icon: BarChart3 },
+  { id: <span class="st">'settings'</span>  <span class="kw">as</span> <span class="ty">Tab</span>, label: <span class="st">'設定'</span>,         icon: Settings  },
+]
+
+<span class="kw">export default function</span> <span class="fn">DashboardPage</span>() {
+  <span class="kw">const</span> [activeTab, setActiveTab] = <span class="fn">useState</span>&lt;<span class="ty">Tab</span>&gt;(<span class="st">'manual'</span>)  <span class="cm">// 初期タブは '手動登録'</span>
+
+  <span class="kw">const</span> handleTabSelect = <span class="fn">useCallback</span>((<span class="at">id</span>: string) => {
+    <span class="fn">setActiveTab</span>(id <span class="kw">as</span> <span class="ty">Tab</span>)
+    <span class="cm">// ↑ string 型を Tab 型に型アサーション（id が必ず Tab の値であると断言）</span>
+  }, [])
+
+  <span class="kw">return</span> (
+    <span class="at">&lt;div&gt;</span>
+      <span class="cm">{/* tabs 配列を map で展開してタブボタンを動的生成 */}</span>
+      <span class="at">&lt;nav&gt;</span>
+        {tabs.<span class="fn">map</span>(({ id, label, icon }) => (
+          <span class="at">&lt;TabButton</span>
+            key={id}
+            id={id}
+            label={label}
+            icon={icon}
+            isActive={activeTab === id}
+            onSelect={handleTabSelect}
+          <span class="at">/&gt;</span>
+        ))}
+      <span class="at">&lt;/nav&gt;</span>
+
+      <span class="cm">{/* 選択中のタブに対応するコンポーネントだけ表示 */}</span>
+      {activeTab === <span class="st">'receipt'</span>   && <span class="at">&lt;ReceiptTab /&gt;</span>}
+      {activeTab === <span class="st">'manual'</span>    && <span class="at">&lt;ManualEntryTab /&gt;</span>}
+      {activeTab === <span class="st">'analytics'</span> && <span class="at">&lt;AnalyticsTab /&gt;</span>}
+      {activeTab === <span class="st">'settings'</span>  && <span class="at">&lt;SettingsTab /&gt;</span>}
+    <span class="at">&lt;/div&gt;</span>
+  )
+}</code></pre>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p>
+      <strong>データ駆動型のタブ設計：</strong>
+      タブの情報を <code>tabs</code> 配列にまとめて <code>.map()</code> で展開する設計パターンです。
+      タブを1つ追加するときに JSX を直接書かず、<code>tabs</code> 配列に1行追加するだけで済みます。
+      <code>id: 'manual' as Tab</code> は、文字列リテラル <code>'manual'</code> を <code>Tab</code> 型として断言しています。
+    </p>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p>
+      <strong><code>&& 演算子</code> による条件付きレンダリング：</strong>
+      <code>条件 && &lt;コンポーネント /&gt;</code> は、条件が <code>true</code> のときだけコンポーネントを表示する定番パターンです。
+    </p>
+  </div>
+
+  <!-- ================================================================
+       12. ReceiptTab
+  ================================================================ -->
+  <h2 id="comp-receipt">12. ReceiptTab コンポーネント</h2>
+
+  <span class="tag tag-gray">components/tabs/ReceiptTab.tsx</span>
+  <span class="tag tag-red">プレースホルダー（未実装）</span>
+
+  <p>レシート撮影・登録の画面です。現時点では見た目だけで機能は持ちません。</p>
+
+  <div class="card">
+    <h4>表示内容</h4>
+    <ul>
+      <li>破線ボーダー付きのアップロードエリア（ホバーで青くなる）</li>
+      <li>カメラアイコン（青い円の中に配置）</li>
+      <li>「レシートを撮影またはアップロード」の説明文</li>
+      <li>「レシートを追加」ボタン（クリックしても今は何も起きない）</li>
+    </ul>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">📌</span>
+    <p>
+      <strong>ホバーエフェクトの仕組み：</strong>
+      <code>hover:border-blue-400 hover:bg-blue-50</code> のように
+      Tailwindの <code>hover:</code> プレフィックスを使うと、CSSの疑似クラス <code>:hover</code> を適用できます。
+      JavaScriptを書かずにインタラクティブな見た目を実現できます。
+    </p>
+  </div>
+
+  <!-- ================================================================
+       13. ManualEntryTab コンポーネント（最重要）
+  ================================================================ -->
+  <h2 id="comp-manual">13. ManualEntryTab コンポーネント（最重要）</h2>
+
+  <span class="tag tag-gray">components/tabs/ManualEntryTab.tsx</span>
+  <span class="tag tag-orange">クライアントコンポーネント</span>
+  <span class="tag tag-blue">最も複雑なコンポーネント</span>
+
+  <p>カレンダー表示と手動入力フォームを持つ、アプリのコア機能です。</p>
+
+  <h3>カレンダーの構築ロジック</h3>
+
+  <p>カレンダーのグリッドは以下の手順で構築されます。</p>
+
+  <pre><code><span class="cm">// 例: 2026年3月のカレンダーを作る場合</span>
+
+<span class="kw">const</span> year  = currentMonth.<span class="fn">getFullYear</span>()  <span class="cm">// 2026</span>
+<span class="kw">const</span> month = currentMonth.<span class="fn">getMonth</span>()     <span class="cm">// 2 (0始まり: 3月=2)</span>
+
+<span class="cm">// 月の最初の日が何曜日か（0=日, 1=月, ..., 6=土）</span>
+<span class="kw">const</span> startDay = <span class="kw">new</span> <span class="fn">Date</span>(year, month, <span class="nu">1</span>).<span class="fn">getDay</span>()  <span class="cm">// 例: 0 (日曜)</span>
+
+<span class="cm">// 月の最終日（0日 = 前月末 の仕組みを利用）</span>
+<span class="kw">const</span> lastDate = <span class="kw">new</span> <span class="fn">Date</span>(year, month + <span class="nu">1</span>, <span class="nu">0</span>).<span class="fn">getDate</span>()  <span class="cm">// 例: 31</span>
+
+<span class="cm">// カレンダーのセル配列を作成</span>
+<span class="cm">// 月初の曜日分だけ null を先頭に詰める</span>
+<span class="kw">const</span> cells = [
+  ...<span class="fn">Array</span>(startDay).<span class="fn">fill</span>(<span class="kw">null</span>),    <span class="cm">// 例: [null] (日曜始まりなら空なし)</span>
+  ...<span class="fn">Array</span>.<span class="fn">from</span>({ length: lastDate }, (_, i) => i + <span class="nu">1</span>)
+  <span class="cm">// → [1, 2, 3, ..., 31]</span>
+]</code></pre>
+
+  <h3>月次サマリーカード（ManualEntryTab 上部に表示）</h3>
+
+  <p>
+    ManualEntryTab の上部には「支出・収入・収支」の3枚のサマリーカードが表示されます。
+    これは <strong>実際に登録したエントリをリアルタイムで集計</strong>しています。
+    AnalyticsTab の <code>SummaryCards</code> コンポーネント（固定モックデータ）とは別物です。
+  </p>
+
+  <pre><code><span class="cm">/**
+ * 指定した年月のエントリから支出合計と収入合計を計算する
+ * @param entries - 全エントリの配列
+ * @param year - 年
+ * @param month - 月（0始まり）
+ * @returns 支出合計と収入合計を持つオブジェクト
+ */</span>
+<span class="kw">function</span> <span class="fn">getMonthlyTotals</span>(entries: <span class="ty">Entry</span>[], year: number, month: number) {
+  <span class="kw">const</span> prefix = <span class="st">`${year}-${<span class="fn">String</span>(month + <span class="nu">1</span>).<span class="fn">padStart</span>(<span class="nu">2</span>, <span class="st">'0'</span>)}`</span>
+  <span class="cm">// "2026-03" で始まるエントリだけ取り出す</span>
+  <span class="kw">const</span> monthEntries = entries.<span class="fn">filter</span>((entry) => entry.date.<span class="fn">startsWith</span>(prefix))
+  <span class="kw">return</span> {
+    expense: monthEntries.<span class="fn">filter</span>((e) => e.type === <span class="st">'expense'</span>).<span class="fn">reduce</span>((sum, e) => sum + e.amount, <span class="nu">0</span>),
+    income:  monthEntries.<span class="fn">filter</span>((e) => e.type === <span class="st">'income'</span>).<span class="fn">reduce</span>((sum, e) => sum + e.amount, <span class="nu">0</span>),
+  }
+}
+
+<span class="cm">/**
+ * サマリーカード用に金額を整形する（1万円以上は「万円」単位）
+ * @param amount - 金額（円）
+ * @returns "12.7万円" や "3,200円" 形式の文字列
+ */</span>
+<span class="kw">function</span> <span class="fn">formatSummaryAmount</span>(amount: number): string {
+  <span class="kw">if</span> (amount >= <span class="nu">10000</span>) <span class="kw">return</span> <span class="st">`${<span class="fn">parseFloat</span>((amount / <span class="nu">10000</span>).<span class="fn">toFixed</span>(<span class="nu">1</span>))}万円`</span>
+  <span class="kw">return</span> <span class="st">`${amount.<span class="fn">toLocaleString</span>()}円`</span>
+}
+
+<span class="cm">// コンポーネント内で集計し、カードに渡す</span>
+<span class="kw">const</span> { expense: monthlyExpense, income: monthlyIncome } = <span class="fn">getMonthlyTotals</span>(entries, year, month)
+<span class="kw">const</span> monthlyBalance = monthlyIncome - monthlyExpense
+
+<span class="cm">// 収支がプラスなら緑、マイナスなら赤のカード背景</span>
+<span class="at">&lt;div</span> className={<span class="st">`rounded-2xl px-4 py-3 ${monthlyBalance &gt;= 0 ? 'bg-green-50' : 'bg-red-50'}`</span>}<span class="at">&gt;</span>
+  <span class="at">&lt;p&gt;</span>{monthlyBalance &gt;= <span class="nu">0</span> ? <span class="st">'+'</span> : <span class="st">''</span>}{<span class="fn">formatSummaryAmount</span>(<span class="fn">Math</span>.<span class="fn">abs</span>(monthlyBalance))}<span class="at">&lt;/p&gt;</span>
+<span class="at">&lt;/div&gt;</span></code></pre>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p>
+      <strong><code>String.prototype.startsWith()</code> による月絞り込み：</strong>
+      <code>entry.date.startsWith('2026-03')</code> は、日付文字列が "2026-03" で始まるものだけを取り出します。
+      <code>filter((e) => e.date.slice(0, 7) === '2026-03')</code> と書いても同じ結果ですが、
+      <code>startsWith</code> のほうが意図が明確です。
+    </p>
+  </div>
+
+  <h3>ヘルパー関数の解説</h3>
+
+  <pre><code><span class="cm">/**
+ * 年・月・日を "YYYY-MM-DD" 形式の文字列に変換する
+ * @param year - 年（4桁）
+ * @param month - 月（0始まり。0=1月, 11=12月）
+ * @param day - 日
+ * @returns "YYYY-MM-DD" 形式の文字列
+ */</span>
+<span class="kw">function</span> <span class="fn">toDateStr</span>(year: number, month: number, day: number) {
+  <span class="kw">return</span> <span class="st">`${year}-${<span class="fn">String</span>(month + <span class="nu">1</span>).<span class="fn">padStart</span>(<span class="nu">2</span>, <span class="st">'0'</span>)}-${<span class="fn">String</span>(day).<span class="fn">padStart</span>(<span class="nu">2</span>, <span class="st">'0'</span>)}`</span>
+  <span class="cm">// padStart(2, '0'): 1桁の数字を "01" のように2桁にゼロ埋めする</span>
+  <span class="cm">// 例: toDateStr(2026, 2, 5) → "2026-03-05"</span>
+}
+
+<span class="cm">/**
+ * 指定した日付のエントリを配列から抽出する
+ */</span>
+<span class="kw">function</span> <span class="fn">getEntriesForDate</span>(entries: <span class="ty">Entry</span>[], dateStr: string) {
+  <span class="kw">return</span> entries.<span class="fn">filter</span>((entry) => entry.date === dateStr)
+}
+
+<span class="cm">/**
+ * 指定した日の支出合計と収入合計を計算する
+ */</span>
+<span class="kw">function</span> <span class="fn">getDayTotals</span>(entries: <span class="ty">Entry</span>[], year: number, month: number, day: number) {
+  <span class="kw">const</span> dayEntries = <span class="fn">getEntriesForDate</span>(entries, <span class="fn">toDateStr</span>(year, month, day))
+  <span class="kw">return</span> {
+    expense: dayEntries.<span class="fn">filter</span>((e) => e.type === <span class="st">'expense'</span>).<span class="fn">reduce</span>((sum, e) => sum + e.amount, <span class="nu">0</span>),
+    income:  dayEntries.<span class="fn">filter</span>((e) => e.type === <span class="st">'income'</span>).<span class="fn">reduce</span>((sum, e) => sum + e.amount, <span class="nu">0</span>),
+  }
+}
+
+<span class="cm">/**
+ * フォームの入力値からエントリオブジェクトを生成する
+ * amount が空または 0 以下のときは null を返す（バリデーション）
+ * @returns 生成した Entry、または無効な入力のとき null
+ */</span>
+<span class="kw">function</span> <span class="fn">buildEntry</span>(
+  selectedDate: string,
+  amount: string,
+  entryType: <span class="ty">EntryType</span>,
+  category: string,
+  note: string,
+): <span class="ty">Entry</span> | <span class="kw">null</span> {
+  <span class="kw">if</span> (!amount || <span class="fn">Number</span>(amount) &lt;= <span class="nu">0</span>) <span class="kw">return null</span>  <span class="cm">// 空または0以下は無効</span>
+  <span class="kw">return</span> {
+    id: <span class="fn">Date</span>.<span class="fn">now</span>(),  <span class="cm">// 現在時刻をIDとして使う（シンプルな一意ID生成）</span>
+    date: selectedDate,
+    type: entryType,
+    category,
+    amount: <span class="fn">Number</span>(amount),  <span class="cm">// string → number 変換</span>
+    note,
+  }
+}
+
+<span class="cm">/**
+ * 収支種別に対応するデフォルトカテゴリを返す
+ * 支出/収入ボタン切り替え時に初期カテゴリを自動設定するために使う
+ */</span>
+<span class="kw">function</span> <span class="fn">resolveDefaultCategory</span>(type: <span class="ty">EntryType</span>): string {
+  <span class="kw">return</span> type === <span class="st">'expense'</span> ? EXPENSE_CATEGORIES[<span class="nu">0</span>] : INCOME_CATEGORIES[<span class="nu">0</span>]
+}</code></pre>
+
+  <h3>月ナビゲーションの上限制御</h3>
+  <p>「次の月」ボタンは1年後まで進めるように上限が設定されています。</p>
+  <pre><code><span class="cm">// 最大月（今から1年後の前月まで進める）</span>
+<span class="kw">const</span> maxMonth = <span class="kw">new</span> <span class="fn">Date</span>(today.<span class="fn">getFullYear</span>() + <span class="nu">1</span>, today.<span class="fn">getMonth</span>() - <span class="nu">1</span>, <span class="nu">1</span>)
+<span class="kw">const</span> isMaxMonth = year === maxMonth.<span class="fn">getFullYear</span>() && month === maxMonth.<span class="fn">getMonth</span>()
+
+<span class="cm">// disabled 属性で上限に達したらボタンを無効化</span>
+<span class="at">&lt;button</span>
+  onClick={handleNextMonth}
+  disabled={isMaxMonth}
+  className=<span class="st">"... disabled:cursor-not-allowed disabled:opacity-30"</span>
+<span class="at">&gt;</span></code></pre>
+
+  <div class="callout info">
+    <span class="callout-icon">📖</span>
+    <p>
+      <strong>Tailwind の <code>disabled:</code> プレフィックス：</strong>
+      <code>disabled:cursor-not-allowed</code> は、HTML の <code>disabled</code> 属性が付いた要素に適用されるスタイルです。
+      フォームの送信ボタンやナビゲーションボタンの非活性表示に便利なパターンです。
+    </p>
+  </div>
+
+  <h3>入力フォームのハンドラ群</h3>
+
+  <h4>支出 / 収入ボタンを押したとき</h4>
+  <p>
+    「支出」ボタンを押すと <code>handleSelectExpense</code> が呼ばれます。
+    <code>setEntryType('expense')</code> で種別を更新すると同時に、
+    <code>resolveDefaultCategory('expense')</code> でカテゴリも支出用の先頭カテゴリに自動でリセットされます。
+    「収入」ボタンも同様で <code>handleSelectIncome</code> → <code>resolveDefaultCategory('income')</code> が動きます。
+    こうすることで「収入に切り替えたのに支出のカテゴリが残る」という違和感をなくしています。
+  </p>
+  <pre><code><span class="kw">const</span> handleSelectExpense = <span class="fn">useCallback</span>(() => {
+  <span class="fn">setEntryType</span>(<span class="st">'expense'</span>)
+  <span class="fn">setCategory</span>(<span class="fn">resolveDefaultCategory</span>(<span class="st">'expense'</span>))  <span class="cm">// カテゴリも一緒にリセット</span>
+}, [])</code></pre>
+
+  <h4>カテゴリを選んだとき</h4>
+  <p>
+    セレクトボックスを操作するたびに <code>handleCategoryChange</code> が呼ばれます。
+    ブラウザが発行する <code>ChangeEvent</code> の <code>event.target.value</code> に選んだカテゴリ名が入っているので、
+    それをそのまま <code>setCategory</code> に渡します。
+  </p>
+  <pre><code><span class="kw">const</span> handleCategoryChange = <span class="fn">useCallback</span>((event: React.<span class="ty">ChangeEvent</span>&lt;<span class="ty">HTMLSelectElement</span>&gt;) => {
+  <span class="fn">setCategory</span>(event.target.value)  <span class="cm">// event.target.value = 選択された option の value</span>
+}, [])</code></pre>
+
+  <h4>金額を入力したとき</h4>
+  <p>
+    キーを押すたびに <code>handleAmountChange</code> が呼ばれ、<code>setAmount(event.target.value)</code> が実行されます。
+    入力値は <strong>文字列のまま</strong> state に保存され、保存時に <code>Number(amount)</code> で数値に変換されます。
+    金額が空または 0 以下のときは <code>buildEntry</code> が <code>null</code> を返し、
+    <code>handleSave</code> 内で早期リターンするため、保存ボタンを押しても何も起きません。
+  </p>
+  <pre><code><span class="kw">const</span> handleAmountChange = <span class="fn">useCallback</span>((event: React.<span class="ty">ChangeEvent</span>&lt;<span class="ty">HTMLInputElement</span>&gt;) => {
+  <span class="fn">setAmount</span>(event.target.value)  <span class="cm">// 文字列として保持（空文字もそのまま扱える）</span>
+}, [])</code></pre>
+
+  <h4>「保存」ボタンを押す（または Enter キー）とき</h4>
+  <p>
+    フォームは <code>&lt;form onSubmit={handleFormSubmit}&gt;</code> になっています。
+    「保存」ボタンのクリックでも Enter キーでも、<code>handleFormSubmit</code> が起動します。
+    まず <code>event.preventDefault()</code> でページリロードを防いだあと、<code>handleSave()</code> に委譲します。
+    <code>handleSave</code> は <code>buildEntry(...)</code> でエントリを生成し、
+    <code>setEntries</code> で配列に追加、最後に <code>setShowForm(false)</code> でフォームを閉じます。
+  </p>
+  <pre><code><span class="kw">const</span> handleFormSubmit = <span class="fn">useCallback</span>((event: React.<span class="ty">SyntheticEvent</span>) => {
+  event.<span class="fn">preventDefault</span>()  <span class="cm">// ブラウザのデフォルト送信（ページリロード）を止める</span>
+  <span class="fn">handleSave</span>()
+}, [handleSave])
+
+<span class="kw">const</span> handleSave = <span class="fn">useCallback</span>(() => {
+  <span class="kw">if</span> (!selectedDate) <span class="kw">return</span>
+  <span class="kw">const</span> entry = <span class="fn">buildEntry</span>(selectedDate, amount, entryType, category, note)
+  <span class="kw">if</span> (!entry) <span class="kw">return</span>                           <span class="cm">// buildEntry が null = 金額が無効</span>
+  <span class="fn">setEntries</span>((previous) => [...previous, entry])
+  <span class="fn">setAmount</span>(<span class="st">''</span>)
+  <span class="fn">setNote</span>(<span class="st">''</span>)
+  <span class="fn">setShowForm</span>(<span class="kw">false</span>)                           <span class="cm">// 保存後にフォームを閉じる</span>
+}, [selectedDate, amount, entryType, category, note])
+  </code></pre>
+
+  <div class="callout info">
+    <span class="callout-icon">📖</span>
+    <p>
+      <strong><code>event.preventDefault()</code> が必要な理由：</strong>
+      HTML の <code>&lt;form&gt;</code> はデフォルトでページをリロードします。
+      Reactアプリではリロードすると state が全て消えてしまうため、
+      <code>onSubmit</code> で必ずこれを止めます。
+      <code>&lt;form onSubmit={handleFormSubmit}&gt;</code> にするだけで、
+      ボタンクリックと Enter キーの両方を一カ所でハンドルできます。
+    </p>
+  </div>
+
+  <h3>EntryRow との連携</h3>
+  <p>
+    選択した日付のエントリ一覧を <code>EntryRow</code> コンポーネントで表示します。
+    削除ハンドラを <code>useCallback</code> でメモ化して渡すことで、
+    リスト内の各行の不要な再レンダリングを防いでいます。
+  </p>
+
+  <pre><code><span class="cm">// 削除ハンドラは useCallback でメモ化して EntryRow へ渡す</span>
+<span class="kw">const</span> handleDeleteEntry = <span class="fn">useCallback</span>((id: number) => {
+  <span class="fn">setEntries</span>((previous) => previous.<span class="fn">filter</span>((entry) => entry.id !== id))
+}, [])
+
+<span class="cm">// 選択日のエントリを EntryRow で一覧表示</span>
+{selectedEntries.<span class="fn">map</span>((entry) => (
+  <span class="at">&lt;EntryRow</span>
+    key={entry.id}
+    entry={entry}
+    onDelete={handleDeleteEntry}
+  <span class="at">/&gt;</span>
+))}</code></pre>
+
+  <h3>モックデータ（初期データ）</h3>
+
+  <pre><code><span class="kw">const</span> initialEntries: <span class="ty">Entry</span>[] = [
+  { id: <span class="nu">1</span>, date: <span class="st">'2026-03-05'</span>, type: <span class="st">'expense'</span>, category: <span class="st">'食費'</span>,   amount: <span class="nu">3200</span>,  note: <span class="st">'スーパー'</span>     },
+  { id: <span class="nu">2</span>, date: <span class="st">'2026-03-10'</span>, type: <span class="st">'income'</span>,  category: <span class="st">'給与'</span>,   amount: <span class="nu">250000</span>, note: <span class="st">'3月分給与'</span>   },
+  { id: <span class="nu">3</span>, date: <span class="st">'2026-03-15'</span>, type: <span class="st">'expense'</span>, category: <span class="st">'交通費'</span>, amount: <span class="nu">1500</span>,  note: <span class="st">'電車代'</span>       },
+  { id: <span class="nu">4</span>, date: <span class="st">'2026-03-20'</span>, type: <span class="st">'expense'</span>, category: <span class="st">'外食'</span>,   amount: <span class="nu">4800</span>,  note: <span class="st">'ランチ'</span>       },
+  { id: <span class="nu">5</span>, date: <span class="st">'2026-03-08'</span>, type: <span class="st">'expense'</span>, category: <span class="st">'日用品'</span>, amount: <span class="nu">2100</span>,  note: <span class="st">'ドラッグストア'</span>},
+]</code></pre>
+
+  <!-- ================================================================
+       14. DayCell コンポーネント
+  ================================================================ -->
+  <h2 id="comp-day-cell">14. DayCell コンポーネント</h2>
+
+  <span class="tag tag-gray">components/tabs/DayCell.tsx</span>
+  <span class="tag tag-orange">クライアントコンポーネント</span>
+
+  <p>
+    カレンダーの1マス（1日分）を表示するコンポーネントです。最大42個（7列×6行）生成されます。
+    ユーザーがマスをクリックすると、コンポーネント内の <code>handleClick</code> が呼ばれ、
+    <code>onSelect(dateStr, isSelected)</code> で親の <code>ManualEntryTab</code> へ日付を伝えます。
+    親側の <code>handleDaySelect</code> は <code>isSelected</code>（すでに選択中かどうか）を見て、
+    同じ日を再クリックしたときはフォームを閉じ、別の日をクリックしたときは新しい日付に切り替えます。
+  </p>
+
+  <h3>Props</h3>
+  <table class="prop-table">
+    <thead><tr><th>プロパティ名</th><th>型</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><code>day</code></td><td><code>number</code></td><td>日付（1〜31）</td></tr>
+      <tr><td><code>dateStr</code></td><td><code>string</code></td><td>"YYYY-MM-DD" 形式の日付文字列</td></tr>
+      <tr><td><code>expense</code></td><td><code>number</code></td><td>その日の支出合計</td></tr>
+      <tr><td><code>income</code></td><td><code>number</code></td><td>その日の収入合計</td></tr>
+      <tr><td><code>isSelected</code></td><td><code>boolean</code></td><td>このマスが選択中か</td></tr>
+      <tr><td><code>isToday</code></td><td><code>boolean</code></td><td>今日の日付か</td></tr>
+      <tr><td><code>dayOfWeek</code></td><td><code>number</code></td><td>曜日（0=日〜6=土）</td></tr>
+      <tr><td><code>onSelect</code></td><td><code>(dateStr, isSelected) =&gt; void</code></td><td>クリック時のコールバック。<code>isSelected</code>（選択中か）も一緒に渡すことで、同じ日の再クリック（選択解除）を親側で判断できる</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p>
+      <strong>なぜ <code>isSelected</code> を親へ渡すの？</strong>
+      選択中の日を再クリックしたときに「選択を解除してフォームを閉じる」か「別の日に切り替える」かを
+      <em>親コンポーネント（ManualEntryTab）</em> が判断するためです。
+      DayCell は「クリックされた」という事実だけを伝え、その後の処理は親に任せます。
+      これにより DayCell は表示だけに専念でき、ロジックが分散しません。
+    </p>
+  </div>
+
+  <h3>ヘルパー関数: formatAmount</h3>
+  <p>
+    セル幅に収まるよう、金額を短縮フォーマットに変換します。
+    <strong>1万円以上は「万」単位</strong>で表示し、小数第1位まで保持します（末尾の <code>.0</code> は除去）。
+  </p>
+
+  <pre><code><span class="cm">/**
+ * カレンダーセル内に表示する金額を短縮フォーマットに変換する
+ * 1万円以上は「万」単位で表示し、セル幅に収まるようにする。
+ * 小数第1位まで表示（例: 1.3万、9.9万）、末尾 .0 は除去（例: 25万）。
+ */</span>
+<span class="kw">function</span> <span class="fn">formatAmount</span>(amount: number): string {
+  <span class="kw">if</span> (amount >= <span class="nu">10000</span>) {
+    <span class="kw">return</span> <span class="st">`${<span class="fn">parseFloat</span>((amount / <span class="nu">10000</span>).<span class="fn">toFixed</span>(<span class="nu">1</span>))}万`</span>
+    <span class="cm">// parseFloat で末尾の ".0" を除去: "25.0" → 25 → "25万"</span>
+    <span class="cm">// 小数は残る:                       "1.3"  → 1.3 → "1.3万"</span>
+  }
+  <span class="kw">return</span> amount.<span class="fn">toLocaleString</span>()  <span class="cm">// 9,999 以下はそのまま: 3200 → "3,200"</span>
+}
+
+<span class="cm">// 表示例</span>
+<span class="cm">// formatAmount(3200)   → "3,200"</span>
+<span class="cm">// formatAmount(12500)  → "1.3万"</span>
+<span class="cm">// formatAmount(250000) → "25万"</span></code></pre>
+
+  <pre><code><span class="cm">/**
+ * カレンダーの1日分のセルコンポーネント
+ * 選択状態・今日・曜日に応じてスタイルを変える
+ */</span>
+<span class="kw">function</span> <span class="fn">DayCell</span>({ day, dateStr, expense, income, isSelected, isToday, dayOfWeek, onSelect }: <span class="ty">DayCellProps</span>) {
+  <span class="kw">const</span> handleClick = <span class="fn">useCallback</span>(() => {
+    <span class="fn">onSelect</span>(dateStr, isSelected)
+  }, [dateStr, isSelected, onSelect])
+
+  <span class="kw">return</span> (
+    <span class="at">&lt;button</span> onClick={handleClick} className=<span class="st">"calendar-day-cell ..."</span><span class="at">&gt;</span>
+      <span class="at">&lt;span&gt;</span>{day}<span class="at">&lt;/span&gt;</span>
+      {expense > <span class="nu">0</span> && <span class="at">&lt;span</span> className=<span class="st">"calendar-amount-label ..."</span><span class="at">&gt;</span>-{<span class="fn">formatAmount</span>(expense)}円<span class="at">&lt;/span&gt;</span>}
+      {income  > <span class="nu">0</span> && <span class="at">&lt;span</span> className=<span class="st">"calendar-amount-label ..."</span><span class="at">&gt;</span>+{<span class="fn">formatAmount</span>(income)}円<span class="at">&lt;/span&gt;</span>}
+    <span class="at">&lt;/button&gt;</span>
+  )
+}</code></pre>
+
+  <!-- ================================================================
+       15. EntryRow コンポーネント
+  ================================================================ -->
+  <h2 id="comp-entry-row">15. EntryRow コンポーネント</h2>
+
+  <span class="tag tag-gray">components/tabs/EntryRow.tsx</span>
+  <span class="tag tag-orange">クライアントコンポーネント</span>
+
+  <p>選択日のエントリを1行で表示するコンポーネントです。カテゴリ・メモ・金額を横並びで表示し、削除ボタンを提供します。</p>
+
+  <h3>Props</h3>
+  <table class="prop-table">
+    <thead><tr><th>プロパティ名</th><th>型</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><code>entry</code></td><td><code>Entry</code></td><td>表示するエントリオブジェクト</td></tr>
+      <tr><td><code>onDelete</code></td><td><code>(id: number) =&gt; void</code></td><td>削除ボタン押下時のコールバック（引数: entry.id）</td></tr>
+    </tbody>
+  </table>
+
+  <pre><code><span class="cm">/**
+ * 収支エントリの1行コンポーネント
+ *
+ * カテゴリ・メモ・金額を横並びで表示し、削除ボタンを提供する。
+ * DayCell と同様に、onDelete を useCallback でメモ化して親から受け取る設計にしている。
+ *
+ * @param entry - 表示するエントリオブジェクト
+ * @param onDelete - 削除ボタン押下時に呼ばれるコールバック（引数: entry.id）
+ */</span>
+<span class="kw">function</span> <span class="fn">EntryRow</span>({ entry, onDelete }: <span class="ty">EntryRowProps</span>) {
+  <span class="kw">const</span> handleDelete = <span class="fn">useCallback</span>(() => {
+    <span class="fn">onDelete</span>(entry.id)
+  }, [entry.id, onDelete])
+
+  <span class="kw">return</span> (
+    <span class="at">&lt;div</span> className=<span class="st">"flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3"</span><span class="at">&gt;</span>
+      <span class="at">&lt;div</span> className=<span class="st">"flex items-center gap-3"</span><span class="at">&gt;</span>
+        {entry.type === <span class="st">'expense'</span>
+          ? <span class="at">&lt;TrendingDown</span> className=<span class="st">"text-red-400"</span> <span class="at">/&gt;</span>   <span class="cm">{/* 支出: 下向き矢印 */}</span>
+          : <span class="at">&lt;TrendingUp</span>   className=<span class="st">"text-green-500"</span> <span class="at">/&gt;</span>  <span class="cm">{/* 収入: 上向き矢印 */}</span>
+        }
+        <span class="at">&lt;div&gt;</span>
+          <span class="at">&lt;span</span> className=<span class="st">"text-sm font-semibold text-gray-900"</span><span class="at">&gt;</span>{entry.category}<span class="at">&lt;/span&gt;</span>
+          {entry.note &amp;&amp; (
+            <span class="at">&lt;span</span> className=<span class="st">"ml-2 text-xs text-gray-400"</span><span class="at">&gt;</span>{entry.note}<span class="at">&lt;/span&gt;</span>
+          )}
+        <span class="at">&lt;/div&gt;</span>
+      <span class="at">&lt;/div&gt;</span>
+
+      <span class="at">&lt;div</span> className=<span class="st">"flex items-center gap-3"</span><span class="at">&gt;</span>
+        <span class="at">&lt;span</span> className={entry.type === <span class="st">'expense'</span> ? <span class="st">'text-red-500'</span> : <span class="st">'text-green-600'</span>}<span class="at">&gt;</span>
+          {entry.type === <span class="st">'expense'</span> ? <span class="st">'-'</span> : <span class="st">'+'</span>}¥{entry.amount.<span class="fn">toLocaleString</span>()}
+        <span class="at">&lt;/span&gt;</span>
+        <span class="at">&lt;button</span>
+          onClick={handleDelete}
+          className=<span class="st">"rounded-lg p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-400"</span>
+          aria-label=<span class="st">"削除"</span>
+        <span class="at">&gt;</span>
+          <span class="at">&lt;Trash2 /&gt;</span>
+        <span class="at">&lt;/button&gt;</span>
+      <span class="at">&lt;/div&gt;</span>
+    <span class="at">&lt;/div&gt;</span>
+  )
+}</code></pre>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p>
+      <strong>なぜ <code>onDelete(entry.id)</code> を <code>useCallback</code> でラップするの？</strong><br>
+      <code>handleDelete = () =&gt; onDelete(entry.id)</code> と直接書くと、EntryRow の再レンダリングのたびに
+      新しい関数オブジェクトが生成されます。<br>
+      <code>useCallback</code> を使うと <code>entry.id</code> と <code>onDelete</code> が変わらない限り
+      同じ関数を使い回すため、子コンポーネント（ボタン）の不要な再レンダリングを防げます。
+    </p>
+  </div>
+
+  <h3>ManualEntryTab との連携</h3>
+  <p>親コンポーネント <code>ManualEntryTab</code> が <code>handleDeleteEntry</code> を <code>useCallback</code> でメモ化して渡します。</p>
+
+  <pre><code><span class="cm">// ManualEntryTab.tsx — 削除ハンドラの定義と EntryRow への受け渡し</span>
+<span class="kw">const</span> handleDeleteEntry = <span class="fn">useCallback</span>((id: number) => {
+  <span class="fn">setEntries</span>((previous) => previous.<span class="fn">filter</span>((entry) => entry.id !== id))
+}, [])
+
+<span class="cm">// ...JSX 内</span>
+{selectedEntries.<span class="fn">map</span>((entry) => (
+  <span class="at">&lt;EntryRow</span>
+    key={entry.id}
+    entry={entry}
+    onDelete={handleDeleteEntry}  <span class="cm">{/* useCallback でメモ化済み */}</span>
+  <span class="at">/&gt;</span>
+))}</code></pre>
+
+  <!-- ================================================================
+       16. AnalyticsTab コンポーネント
+  ================================================================ -->
+  <h2 id="comp-analytics">16. AnalyticsTab コンポーネント</h2>
+
+  <span class="tag tag-gray">components/tabs/AnalyticsTab.tsx</span>
+
+  <p>4つの分析コンポーネントをまとめて表示するシンプルなコンテナです。</p>
+
+  <pre><code><span class="kw">export function</span> <span class="fn">AnalyticsTab</span>() {
+  <span class="kw">return</span> (
+    <span class="at">&lt;div&gt;</span>
+      <span class="at">&lt;SummaryCards /&gt;</span>           <span class="cm">{/* 収支サマリーカード */}</span>
+      <span class="at">&lt;CategoryExpenseChart /&gt;</span>   <span class="cm">{/* カテゴリ別支出 */}</span>
+      <span class="at">&lt;MonthlyTrendChart /&gt;</span>      <span class="cm">{/* 月別推移 */}</span>
+      <span class="at">&lt;AssetTrendChart /&gt;</span>        <span class="cm">{/* 資産推移 */}</span>
+    <span class="at">&lt;/div&gt;</span>
+  )
+}</code></pre>
+
+  <!-- ================================================================
+       16. SummaryCards コンポーネント
+  ================================================================ -->
+  <h2 id="comp-summary">17. SummaryCards コンポーネント</h2>
+
+  <span class="tag tag-gray">components/tabs/analytics/SummaryCards.tsx</span>
+
+  <p>収入・支出・収支の3枚のサマリーカードを横並びで表示します。</p>
+
+  <div class="callout warning">
+    <span class="callout-icon">⚠️</span>
+    <p>
+      <strong>注意：SummaryCards はモックデータ固定です。</strong>
+      AnalyticsTab の <code>SummaryCards</code> は現時点でソースコードに直書きされた固定値を表示します。
+      手動登録タブで追加したエントリとは連動しません。<br>
+      エントリと連動したサマリーは、ManualEntryTab 上部の3枚カードで確認できます。
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>表示する3枚のカード（固定モックデータ）</h4>
+    <ul>
+      <li>💸 <strong>支出</strong>: ¥12.7万（127,420円 固定）</li>
+      <li>💰 <strong>収入</strong>: ¥25万（250,000円 固定）</li>
+      <li>📊 <strong>収支</strong>: ¥12.3万（122,580円 固定）→ プラスなら緑、マイナスなら赤</li>
+    </ul>
+  </div>
+
+  <pre><code><span class="cm">// SummaryCards.tsx — 固定値をコンポーネント外で定義</span>
+<span class="kw">const</span> totalExpense = <span class="nu">127420</span>
+<span class="kw">const</span> totalIncome  = <span class="nu">250000</span>
+<span class="kw">const</span> balance      = totalIncome - totalExpense  <span class="cm">// 122580</span>
+
+<span class="cm">// 収支がプラスなら緑、マイナスなら赤で表示</span>
+<span class="at">&lt;p</span> className={balance &gt;= <span class="nu">0</span> ? <span class="st">'text-green-600'</span> : <span class="st">'text-red-500'</span>}<span class="at">&gt;</span>
+  {balance &gt;= <span class="nu">0</span> ? <span class="st">'+'</span> : <span class="st">''</span>}¥{(balance / <span class="nu">10000</span>).<span class="fn">toFixed</span>(<span class="nu">1</span>)}万
+<span class="at">&lt;/p&gt;</span></code></pre>
+
+  <!-- ================================================================
+       17. CategoryExpenseChart コンポーネント
+  ================================================================ -->
+  <h2 id="comp-category">18. CategoryExpenseChart コンポーネント</h2>
+
+  <span class="tag tag-gray">components/tabs/analytics/CategoryExpenseChart.tsx</span>
+
+  <p>カテゴリ別の支出を横方向のプログレスバーで可視化します。</p>
+
+  <pre><code><span class="kw">type</span> <span class="ty">CategoryData</span> = {
+  name: string       <span class="cm">// "食費", "外食" など</span>
+  amount: number     <span class="cm">// 金額</span>
+  percentage: number <span class="cm">// 全支出に対する割合 (0-100)</span>
+  color: string      <span class="cm">// Tailwind のカラークラス</span>
+}
+
+<span class="kw">const</span> categories: <span class="ty">CategoryData</span>[] = [
+  { name: <span class="st">'食費'</span>,   amount: <span class="nu">45200</span>, percentage: <span class="nu">36</span>, color: <span class="st">'bg-blue-500'</span>   },
+  { name: <span class="st">'外食'</span>,   amount: <span class="nu">18600</span>, percentage: <span class="nu">15</span>, color: <span class="st">'bg-green-500'</span>  },
+  { name: <span class="st">'交通費'</span>, amount: <span class="nu">12400</span>, percentage: <span class="nu">10</span>, color: <span class="st">'bg-yellow-500'</span> },
+  <span class="cm">// ...他3カテゴリ</span>
+]</code></pre>
+
+  <h3>CSS変数でバーの幅を制御するテクニック</h3>
+
+  <pre><code><span class="cm">// JSX側: CSS変数を style で渡す</span>
+<span class="at">&lt;div</span>
+  className=<span class="st">"progress-fill"</span>
+  style={{ <span class="st">'--progress-width'</span>: <span class="st">`${category.percentage}%`</span> } <span class="kw">as</span> React.CSSProperties}
+<span class="at">/&gt;</span></code></pre>
+
+  <pre><code><span class="cm">/* globals.css 側: CSS変数を使ってwidthを定義 */</span>
+<span class="at">.progress-fill</span> {
+  width: var(--progress-width);
+  transition: width 0.3s ease;
+}</code></pre>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p>
+      <strong>なぜこの方法を使うの？</strong>
+      Tailwind CSS は静的にクラス名を解析するため、<code>w-[36%]</code> のように動的な値を直接クラスで書くと
+      本番ビルドで消えてしまうことがあります。
+      CSS変数（カスタムプロパティ）経由で値を渡すことで、動的なスタイルを安全に適用できます。
+    </p>
+  </div>
+
+  <!-- ================================================================
+       18. MonthlyTrendChart コンポーネント
+  ================================================================ -->
+  <h2 id="comp-monthly">19. MonthlyTrendChart コンポーネント</h2>
+
+  <span class="tag tag-gray">components/tabs/analytics/MonthlyTrendChart.tsx</span>
+
+  <p>過去6ヶ月分の収入と支出を並列の棒グラフで表示します。</p>
+
+  <div class="card">
+    <h4>モックデータ（2025年10月〜2026年3月）</h4>
+    <ul>
+      <li>各月に <code>income</code>（収入）と <code>expense</code>（支出）を持つ</li>
+      <li>棒の高さは最大値（350,000円）に対するパーセンテージ</li>
+    </ul>
+  </div>
+
+  <pre><code><span class="kw">type</span> <span class="ty">MonthlyData</span> = {
+  month: string    <span class="cm">// "10月", "11月" など</span>
+  expense: number
+  income: number
+}
+
+<span class="cm">// 棒グラフの高さを計算（最大値 MAX_VALUE に対する割合）</span>
+<span class="kw">const</span> MAX_VALUE = <span class="nu">350000</span>
+<span class="kw">const</span> incomeHeight  = (data.income  / MAX_VALUE * <span class="nu">100</span>).<span class="fn">toFixed</span>(<span class="nu">1</span>) + <span class="st">'%'</span>
+<span class="kw">const</span> expenseHeight = (data.expense / MAX_VALUE * <span class="nu">100</span>).<span class="fn">toFixed</span>(<span class="nu">1</span>) + <span class="st">'%'</span>
+
+<span class="cm">// CSS変数で棒の高さを渡す（CategoryExpenseChart と同じ手法）</span>
+<span class="at">&lt;div</span>
+  className=<span class="st">"chart-bar bg-emerald-400"</span>
+  style={{ <span class="st">'--chart-height'</span>: incomeHeight } <span class="kw">as</span> React.CSSProperties}
+<span class="at">/&gt;</span></code></pre>
+
+  <!-- ================================================================
+       19. AssetTrendChart コンポーネント
+  ================================================================ -->
+  <h2 id="comp-asset">20. AssetTrendChart コンポーネント</h2>
+
+  <span class="tag tag-gray">components/tabs/analytics/AssetTrendChart.tsx</span>
+  <span class="tag tag-blue">SVGグラフ（最も高度）</span>
+
+  <p>過去12ヶ月の資産推移を折れ線グラフ（SVG）で描画します。外部のグラフライブラリを使わず、SVGを直接生成しています。</p>
+
+  <h3>SVGの座標系</h3>
+
+  <pre><code><span class="cm">// SVGの描画領域</span>
+<span class="kw">const</span> SVG_WIDTH  = <span class="nu">340</span>  <span class="cm">// SVGの幅（ピクセル）</span>
+<span class="kw">const</span> SVG_HEIGHT = <span class="nu">180</span>  <span class="cm">// SVGの高さ</span>
+<span class="kw">const</span> PADDING = { top: <span class="nu">16</span>, right: <span class="nu">12</span>, bottom: <span class="nu">28</span>, left: <span class="nu">48</span> }
+<span class="cm">// ↑ left が大きいのはY軸ラベルのスペースを確保するため</span>
+
+<span class="cm">// データの値範囲</span>
+<span class="kw">const</span> MIN_VALUE = <span class="nu">800000</span>   <span class="cm">// 80万円（Y軸の最小値）</span>
+<span class="kw">const</span> MAX_VALUE = <span class="nu">2800000</span>  <span class="cm">// 280万円（Y軸の最大値）</span>
+
+<span class="cm">/**
+ * データインデックスをSVGのX座標に変換する
+ * @param index - データ配列のインデックス（0から始まる）
+ * @param total - データの総数
+ * @returns SVGのX座標（ピクセル）
+ */</span>
+<span class="kw">function</span> <span class="fn">toAssetX</span>(index: number, total: number): number {
+  <span class="kw">const</span> plotWidth = SVG_WIDTH - PADDING.left - PADDING.right
+  <span class="kw">return</span> PADDING.left + (index / (total - <span class="nu">1</span>)) * plotWidth
+  <span class="cm">// 例: 12点データの場合、index=0 → 左端、index=11 → 右端</span>
+}
+
+<span class="cm">/**
+ * 資産の金額をSVGのY座標に変換する
+ * SVGはY軸が下向き正なので反転が必要
+ * @param value - 資産金額
+ * @returns SVGのY座標（ピクセル）
+ */</span>
+<span class="kw">function</span> <span class="fn">toAssetY</span>(value: number): number {
+  <span class="kw">const</span> plotHeight = SVG_HEIGHT - PADDING.top - PADDING.bottom
+  <span class="kw">const</span> ratio = (value - MIN_VALUE) / (MAX_VALUE - MIN_VALUE)
+  <span class="kw">return</span> PADDING.top + plotHeight * (<span class="nu">1</span> - ratio)
+  <span class="cm">// ↑ (1 - ratio) でY軸を反転: 値が大きいほどY座標が小さい（上）になる</span>
+}</code></pre>
+
+  <h3>グラデーション付き塗りつぶしエリアの生成</h3>
+
+  <pre><code><span class="cm">/**
+ * 折れ線グラフの下部を塗りつぶすSVGパスを生成する
+ * @param data - 資産データの配列
+ * @returns SVGのパス文字列（d属性に渡す）
+ */</span>
+<span class="kw">function</span> <span class="fn">buildAssetAreaPath</span>(data: <span class="ty">AssetData</span>[]): string {
+  <span class="kw">const</span> total = data.length
+  <span class="kw">const</span> bottomY = SVG_HEIGHT - PADDING.bottom  <span class="cm">// グラフ底辺のY座標</span>
+
+  <span class="cm">// 最初の点への移動</span>
+  <span class="kw">let</span> path = <span class="st">`M ${<span class="fn">toAssetX</span>(0, total)} ${bottomY}`</span>  <span class="cm">// 左下から開始</span>
+
+  <span class="cm">// 全データ点を結ぶ</span>
+  data.<span class="fn">forEach</span>((point, i) => {
+    path += <span class="st">` L ${<span class="fn">toAssetX</span>(i, total)} ${<span class="fn">toAssetY</span>(point.asset)}`</span>
+  })
+
+  <span class="cm">// 右下に移動して閉じる</span>
+  path += <span class="st">` L ${<span class="fn">toAssetX</span>(total - 1, total)} ${bottomY} Z`</span>
+  <span class="kw">return</span> path
+}</code></pre>
+
+  <pre><code><span class="cm">{/* SVGでグラデーション定義 → パスに適用 */}</span>
+<span class="at">&lt;defs&gt;</span>
+  <span class="at">&lt;linearGradient</span> id=<span class="st">"assetGradient"</span> x1=<span class="st">"0"</span> y1=<span class="st">"0"</span> x2=<span class="st">"0"</span> y2=<span class="st">"1"</span><span class="at">&gt;</span>
+    <span class="at">&lt;stop</span> offset=<span class="st">"0%"</span>   stopColor=<span class="st">"#3b82f6"</span> stopOpacity=<span class="st">"0.3"</span> <span class="at">/&gt;</span>
+    <span class="at">&lt;stop</span> offset=<span class="st">"100%"</span> stopColor=<span class="st">"#3b82f6"</span> stopOpacity=<span class="st">"0"</span>   <span class="at">/&gt;</span>
+  <span class="at">&lt;/linearGradient&gt;</span>
+<span class="at">&lt;/defs&gt;</span>
+<span class="at">&lt;path</span> d={<span class="fn">buildAssetAreaPath</span>(assetData)} fill=<span class="st">"url(#assetGradient)"</span> <span class="at">/&gt;</span></code></pre>
+
+  <!-- ================================================================
+       20. SettingsTab コンポーネント
+  ================================================================ -->
+  <h2 id="comp-settings">21. SettingsTab コンポーネント</h2>
+
+  <span class="tag tag-gray">components/tabs/SettingsTab.tsx</span>
+  <span class="tag tag-red">Coming Soon</span>
+
+  <p>設定画面のプレースホルダーです。「Coming Soon」と表示するだけのシンプルなコンポーネントです。</p>
+
+  <hr class="divider">
+
+  <!-- ================================================================
+       21. 型定義一覧
+  ================================================================ -->
+  <h2 id="types">22. 型定義一覧（TypeScript）</h2>
+
+  <div class="callout info">
+    <span class="callout-icon">📖</span>
+    <p>
+      TypeScript では <code>type</code> キーワードで<strong>型エイリアス</strong>を定義します。
+      <code>interface</code> と似ていますが、このプロジェクトでは <code>type</code> を優先しています（CLAUDE.mdに記載）。
+    </p>
+  </div>
+
+  <h3>収支エントリの型</h3>
+  <pre><code><span class="kw">type</span> <span class="ty">EntryType</span> = <span class="st">'expense'</span> | <span class="st">'income'</span>
+<span class="cm">// ↑ ユニオン型：2つの文字列リテラルのどちらかしか取れない</span>
+
+<span class="kw">type</span> <span class="ty">Entry</span> = {
+  id:       number     <span class="cm">// 一意の識別子</span>
+  date:     string     <span class="cm">// "YYYY-MM-DD" 形式</span>
+  type:     <span class="ty">EntryType</span>  <span class="cm">// 'expense' か 'income'</span>
+  category: string     <span class="cm">// "食費", "給与" など</span>
+  amount:   number     <span class="cm">// 金額（円）</span>
+  note:     string     <span class="cm">// メモ（空文字もあり）</span>
+}</code></pre>
+
+  <h3>EntryRow の Props 型</h3>
+  <pre><code><span class="kw">type</span> <span class="ty">EntryRowProps</span> = {
+  entry:    <span class="ty">Entry</span>                   <span class="cm">// 表示するエントリオブジェクト</span>
+  onDelete: (id: number) => <span class="kw">void</span>   <span class="cm">// 削除ボタン押下時のコールバック</span>
+}</code></pre>
+
+  <h3>コンポーネントの Props 型</h3>
+  <pre><code><span class="kw">type</span> <span class="ty">DayCellProps</span> = {
+  day:        number
+  dateStr:    string
+  expense:    number
+  income:     number
+  isSelected: boolean
+  isToday:    boolean
+  dayOfWeek:  number
+  onSelect:   (dateStr: string, isSelected: boolean) => <span class="kw">void</span>
+  <span class="cm">//           ↑ コールバック関数の型。引数と戻り値を明記する</span>
+}
+
+<span class="kw">type</span> <span class="ty">TabButtonProps</span> = {
+  id:       string
+  label:    string
+  icon:     <span class="ty">LucideIcon</span>  <span class="cm">// Lucide React が提供するアイコンコンポーネントの型</span>
+  isActive: boolean
+  onSelect: (id: string) => <span class="kw">void</span>
+}</code></pre>
+
+  <h3>グラフコンポーネントの型</h3>
+  <pre><code><span class="cm">// CategoryExpenseChart.tsx</span>
+<span class="kw">type</span> <span class="ty">CategoryData</span> = {
+  name:       string
+  amount:     number
+  percentage: number  <span class="cm">// 0〜100</span>
+  color:      string  <span class="cm">// Tailwind クラス名（例: "bg-blue-500"）</span>
+}
+
+<span class="cm">// MonthlyTrendChart.tsx</span>
+<span class="kw">type</span> <span class="ty">MonthlyData</span> = {
+  month:   string
+  expense: number
+  income:  number
+}
+
+<span class="cm">// AssetTrendChart.tsx</span>
+<span class="kw">type</span> <span class="ty">AssetData</span> = {
+  label: string  <span class="cm">// "4月", "5月" など</span>
+  asset: number  <span class="cm">// 資産合計（円）</span>
+}</code></pre>
+
+  <hr class="divider">
+
+  <!-- ================================================================
+       22. スタイリング戦略
+  ================================================================ -->
+  <h2 id="styling">23. スタイリング戦略</h2>
+
+  <p>このプロジェクトでは2つのスタイリング手法を組み合わせています。</p>
+
+  <h3>① Tailwind CSS ユーティリティクラス（主役）</h3>
+  <p>HTML要素に直接クラスを当ててスタイルを定義します。CSSファイルを別途作らなくてよい利点があります。</p>
+
+  <pre><code><span class="cm">{/* Tailwind クラスの例 */}</span>
+<span class="at">&lt;div</span> className=<span class="st">"flex items-center justify-between gap-4 p-4 bg-white rounded-xl shadow-sm"</span><span class="at">&gt;</span>
+<span class="cm">{/*              ↑フレックス  ↑縦���央寄せ  ↑横両端寄せ   ↑間隔  ↑パディング ↑背景白  ↑角丸   ↑影 */}</span></code></pre>
+
+  <h3>② カスタム CSS（app/globals.css）</h3>
+  <p>Tailwindだけでは表現しにくい複雑なスタイルや、CSS変数が必要な場合に使います。</p>
+
+  <pre><code><span class="cm">/* globals.css の主なカスタムクラス */</span>
+
+<span class="at">.dashboard-container</span> {
+  max-width: 672px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+<span class="at">.calendar-day-cell</span> {
+  min-height: 4.5rem;  <span class="cm">/* 72px：日付マスの最小高さ */</span>
+  cursor: pointer;
+}
+
+<span class="at">.progress-fill</span> {
+  width: var(--progress-width);  <span class="cm">/* JS から CSS変数で動的に幅を設定 */</span>
+  height: 8px;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+<span class="at">.chart-bar</span> {
+  height: var(--chart-height);  <span class="cm">/* 棒グラフの動的な高さ */</span>
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+}</code></pre>
+
+  <h3>レスポンシブデザイン</h3>
+  <p>Tailwind の<strong>ブレークポイントプレフィックス</strong>を使ってスマホ/PC対応します。</p>
+
+  <pre><code><span class="cm">{/* モバイルでは非表示、sm（640px）以上で表示 */}</span>
+<span class="at">&lt;span</span> className=<span class="st">"hidden sm:inline"</span><span class="at">&gt;</span>ログアウト<span class="at">&lt;/span&gt;</span>
+
+<span class="cm">{/* モバイルでは縦並び、lg（1024px）以上で横並び */}</span>
+<span class="at">&lt;div</span> className=<span class="st">"flex flex-col lg:flex-row"</span><span class="at">&gt;</span></code></pre>
+
+  <hr class="divider">
+
+  <!-- ================================================================
+       23. 使われているReactフック
+  ================================================================ -->
+  <h2 id="react-hooks">24. 使われているReactフック</h2>
+
+  <h3>useState — 状態の管理</h3>
+  <pre><code><span class="kw">const</span> [state, setState] = <span class="fn">useState</span>(initialValue)
+<span class="cm">//         ↑現在の値   ↑更新関数      ↑初期値</span>
+
+<span class="cm">// 例1: 文字列の状態</span>
+<span class="kw">const</span> [note, setNote] = <span class="fn">useState</span>(<span class="st">''</span>)
+
+<span class="cm">// 例2: 配列の状態（型付き）</span>
+<span class="kw">const</span> [entries, setEntries] = <span class="fn">useState</span>&lt;<span class="ty">Entry</span>[]&gt;(INITIAL_ENTRIES)
+
+<span class="cm">// 例3: null になりうる状態</span>
+<span class="kw">const</span> [selectedDate, setSelectedDate] = <span class="fn">useState</span>&lt;string | null&gt;(<span class="kw">null</span>)</code></pre>
+
+  <div class="callout info">
+    <span class="callout-icon">📖</span>
+    <p>
+      <strong>stateを更新すると何が起きる？</strong>
+      <code>setState</code> を呼ぶとReactはコンポーネントを<strong>再レンダリング</strong>します。
+      JSXを再評価して変化した部分だけをDOMに反映します（Virtual DOMの仕組み）。
+    </p>
+  </div>
+
+  <h3>useCallback — 関数のメモ化</h3>
+  <pre><code><span class="kw">const</span> memoizedFn = <span class="fn">useCallback</span>(() => {
+  <span class="cm">// 処理</span>
+}, [dependency1, dependency2])
+<span class="cm">// ↑ 依存配列: ここに挙げた値が変わったときだけ関数を再生成する</span>
+
+<span class="cm">// 使わない場合との違い</span>
+<span class="cm">// ❌ これだとレンダリングのたびに新しい関数オブジェクトが生成される</span>
+<span class="kw">const</span> handleClick = () => <span class="fn">doSomething</span>()
+
+<span class="cm">// ✅ これなら同じ関数オブジェクトを使い回す（子コンポーネントの無駄な再レンダリング防止）</span>
+<span class="kw">const</span> handleClick = <span class="fn">useCallback</span>(() => <span class="fn">doSomething</span>(), [])</code></pre>
+
+  <div class="callout warning">
+    <span class="callout-icon">⚠️</span>
+    <p>
+      <strong>CLAUDE.md の規約：</strong>
+      このプロジェクトでは <code>() =&gt; doSomething()</code> のような関数式を
+      Propsとして直接渡すことを禁止しています。
+      必ず <code>useCallback()</code> を使って渡すことが規約です。
+    </p>
+  </div>
+
+  <!-- ================================================================
+       24. Reactパターン解説
+  ================================================================ -->
+  <h2 id="react-patterns">25. このコードで使われているReactパターン</h2>
+
+  <h3>パターン1: Propsドリリング（Props Drilling）</h3>
+  <p>
+    親コンポーネントから子コンポーネントへデータを <code>props</code> で渡す基本パターンです。
+    <code>ManualEntryTab</code> → <code>DayCell</code> へ <code>onSelect</code> 関数を渡しています。
+  </p>
+  <pre><code><span class="cm">// ManualEntryTab（親）が DayCell（子）にコールバックを渡す</span>
+<span class="at">&lt;DayCell</span>
+  day={day}
+  dateStr={dateStr}
+  expense={totals.expense}
+  income={totals.income}
+  isSelected={selectedDate === dateStr}
+  isToday={dateStr === todayStr}
+  dayOfWeek={(startDay + i) % <span class="nu">7</span>}
+  onSelect={handleDaySelect}  <span class="cm">{/* ← useCallback でメモ化した関数 */}</span>
+<span class="at">/&gt;</span></code></pre>
+
+  <h3>パターン2: 条件付きレンダリング</h3>
+  <pre><code><span class="cm">{/* && 演算子（条件が true のときだけ表示） */}</span>
+{showForm && <span class="at">&lt;EntryForm /&gt;</span>}
+
+<span class="cm">{/* 三項演算子（条件で表示内容を切り替え） */}</span>
+{isSelected
+  ? <span class="at">&lt;div</span> className=<span class="st">"bg-blue-500 text-white"</span><span class="at">&gt;</span>選択中<span class="at">&lt;/div&gt;</span>
+  : <span class="at">&lt;div&gt;</span>未選択<span class="at">&lt;/div&gt;</span>
+}</code></pre>
+
+  <h3>パターン3: リストレンダリング（map）</h3>
+  <pre><code><span class="cm">{/* 配列を map でJSX要素に変換 */}</span>
+{categories.<span class="fn">map</span>((category) => (
+  <span class="at">&lt;div</span> key={category.name}<span class="at">&gt;</span>  <span class="cm">{/* ← key は必須！Reactが差分を特定するために使う */}</span>
+    <span class="at">&lt;span&gt;</span>{category.name}<span class="at">&lt;/span&gt;</span>
+    <span class="at">&lt;span&gt;</span>¥{category.amount.<span class="fn">toLocaleString</span>()}<span class="at">&lt;/span&gt;</span>
+  <span class="at">&lt;/div&gt;</span>
+))}</code></pre>
+
+  <h3>パターン4: サーバーコンポーネント vs クライアントコンポーネント</h3>
+
+  <table class="prop-table">
+    <thead>
+      <tr><th>項目</th><th>サーバーコンポーネント</th><th>クライアントコンポーネント</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>宣言方法</td><td>何も書かない（デフォルト）</td><td>ファイル先頭に <code>'use client'</code></td></tr>
+      <tr><td>useState 使用</td><td>❌ 使えない</td><td>✅ 使える</td></tr>
+      <tr><td>onClick などのイベント</td><td>❌ 使えない</td><td>✅ 使える</td></tr>
+      <tr><td>レンダリング場所</td><td>サーバー上</td><td>ブラウザ上</td></tr>
+      <tr><td>パフォーマンス</td><td>高速（JS不要）</td><td>インタラクティブ</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p>
+      <strong>設計のコツ：</strong>
+      できるだけサーバーコンポーネントを使い、
+      インタラクション（クリック、フォーム入力）が必要な最小限の部分だけを
+      クライアントコンポーネントにするのがNext.jsのベストプラクティスです。
+    </p>
+  </div>
+
+  <h3>パターン5: JSDoc コメント</h3>
+  <p>このプロジェクトでは関数に必ずJSDocコメントを記述することが規約です。</p>
+
+  <pre><code><span class="cm">/**
+ * 関数の目的・役割の説明（日本語）
+ * @param paramName - このパラメータの説明
+ * @param anotherParam - このパラメータの説明
+ * @returns 戻り値の説明
+ */</span>
+<span class="kw">function</span> <span class="fn">exampleFunction</span>(paramName: string, anotherParam: number): string {
+  <span class="cm">// ...</span>
+}</code></pre>
+
+  <hr class="divider">
+
+  <!-- まとめ -->
+  <div class="card" style="background: linear-gradient(135deg, #eff6ff, #f0fdf4); border-color: #bfdbfe;">
+    <h3 style="margin-top: 0;">📚 まとめ：このコードから学べること</h3>
+    <ul>
+      <li>✅ <strong>Next.js App Router</strong> のルーティングとレイアウトの仕組み</li>
+      <li>✅ <strong>サーバー/クライアントコンポーネント</strong>の使い分け</li>
+      <li>✅ <strong>useState</strong> による状態管理と<strong>イミュータブルな更新</strong></li>
+      <li>✅ <strong>useCallback</strong> による関数のメモ化（最適化）</li>
+      <li>✅ <strong>TypeScript の型定義</strong>（ユニオン型・型エイリアス・ジェネリクス）</li>
+      <li>✅ <strong>Props によるコンポーネント間通信</strong></li>
+      <li>✅ <strong>Tailwind CSS</strong> とカスタム CSS の組み合わせ</li>
+      <li>✅ <strong>CSS変数</strong>を使った動的スタイリング</li>
+      <li>✅ <strong>SVGによるグラフ描画</strong>（座標変換・パス生成）</li>
+      <li>✅ <strong>JSDoc</strong> によるコードドキュメント化</li>
+    </ul>
+  </div>
+
+  <a href="#top" class="back-to-top">↑ トップへ戻る</a>
+
+</main>
+
+</body>
+</html>

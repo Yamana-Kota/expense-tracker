@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,60 +12,7 @@ import {
 } from 'lucide-react';
 import DayCell from '@/components/tabs/DayCell';
 import EntryRow from '@/components/tabs/EntryRow';
-
-type EntryType = 'expense' | 'income';
-
-type Entry = {
-  id: number;
-  date: string;
-  type: EntryType;
-  category: string;
-  amount: number;
-  note: string;
-};
-
-const initialEntries: Entry[] = [
-  {
-    id: 1,
-    date: '2026-03-05',
-    type: 'expense',
-    category: '食費',
-    amount: 3200,
-    note: 'スーパー',
-  },
-  {
-    id: 2,
-    date: '2026-03-10',
-    type: 'income',
-    category: '給与',
-    amount: 250000,
-    note: '3月分給与',
-  },
-  {
-    id: 3,
-    date: '2026-03-15',
-    type: 'expense',
-    category: '交通費',
-    amount: 1500,
-    note: '電車代',
-  },
-  {
-    id: 4,
-    date: '2026-03-20',
-    type: 'expense',
-    category: '外食',
-    amount: 4800,
-    note: 'ランチ',
-  },
-  {
-    id: 5,
-    date: '2026-03-08',
-    type: 'expense',
-    category: '日用品',
-    amount: 2100,
-    note: 'ドラッグストア',
-  },
-];
+import type { Entry, EntryType } from '@/shared/entry';
 
 const EXPENSE_CATEGORIES = [
   '食費',
@@ -79,6 +26,28 @@ const EXPENSE_CATEGORIES = [
 ];
 const INCOME_CATEGORIES = ['給与', '副業', 'ボーナス', '贈り物', 'その他'];
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+/**
+ * 入力文字列から数字のみ取り出し、カンマ区切りにフォーマットする
+ *
+ * @param value - ユーザーの入力文字列
+ * @returns カンマ区切りの金額文字列（例: "10,000"）、数字がなければ空文字
+ */
+function formatAmountInput(value: string): string {
+  const digits = value.replace(/[^\d]/g, '');
+  if (!digits) return '';
+  return Number(digits).toLocaleString();
+}
+
+/**
+ * カンマ区切りの金額文字列を数値に変換する
+ *
+ * @param formatted - カンマ区切りの金額文字列
+ * @returns 数値
+ */
+function parseAmountInput(formatted: string): number {
+  return Number(formatted.replace(/,/g, ''));
+}
 
 /**
  * サマリーカード用に金額を整形する
@@ -104,12 +73,13 @@ function formatSummaryAmount(amount: number): string {
  * @returns 支出合計と収入合計を持つオブジェクト
  */
 function getMonthlyTotals(
-  entries: Entry[],
+  entries: ReadonlyArray<Entry>,
   year: number,
   month: number,
 ): { expense: number; income: number } {
   const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
   const monthEntries = entries.filter((entry) => entry.date.startsWith(prefix));
+  // 各値の合計を計算する
   return {
     expense: monthEntries
       .filter((entry) => entry.type === 'expense')
@@ -139,7 +109,7 @@ function toDateStr(year: number, month: number, day: number) {
  * @param dateStr - 絞り込む日付文字列（'YYYY-MM-DD' 形式）
  * @returns 指定日に一致するエントリの配列
  */
-function getEntriesForDate(entries: Entry[], dateStr: string) {
+function getEntriesForDate(entries: ReadonlyArray<Entry>, dateStr: string) {
   return entries.filter((entry) => entry.date === dateStr);
 }
 
@@ -153,12 +123,13 @@ function getEntriesForDate(entries: Entry[], dateStr: string) {
  * @returns 支出合計と収入合計を持つオブジェクト
  */
 function getDayTotals(
-  entries: Entry[],
+  entries: ReadonlyArray<Entry>,
   year: number,
   month: number,
   day: number,
 ) {
   const dayEntries = getEntriesForDate(entries, toDateStr(year, month, day));
+  // 各値の合計を計算する
   return {
     expense: dayEntries
       .filter((entry) => entry.type === 'expense')
@@ -166,34 +137,6 @@ function getDayTotals(
     income: dayEntries
       .filter((entry) => entry.type === 'income')
       .reduce((sum, entry) => sum + entry.amount, 0),
-  };
-}
-
-/**
- * フォームの入力値からエントリオブジェクトを生成する
- *
- * @param selectedDate - 選択中の日付文字列（'YYYY-MM-DD' 形式）
- * @param amount - 金額の文字列（空文字のとき null を返す）
- * @param entryType - 収支の種別
- * @param category - カテゴリ名
- * @param note - メモ
- * @returns 生成した Entry、または amount が空のとき null
- */
-function buildEntry(
-  selectedDate: string,
-  amount: string,
-  entryType: EntryType,
-  category: string,
-  note: string,
-): Entry | null {
-  if (!amount || Number(amount) <= 0) return null;
-  return {
-    id: Date.now(),
-    date: selectedDate,
-    type: entryType,
-    category,
-    amount: Number(amount),
-    note,
   };
 }
 
@@ -212,6 +155,7 @@ function resolveDefaultCategory(type: EntryType): string {
  *
  * カレンダー形式で日付を選択し、収支エントリを追加・一覧表示する。
  * 月移動・日付選択・フォーム表示・エントリ保存の state を管理する。
+ * エントリの取得・作成・削除は API を通じて行う。
  */
 export default function ManualEntryTab() {
   const today = new Date();
@@ -230,7 +174,7 @@ export default function ManualEntryTab() {
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
-  const [entries, setEntries] = useState<Entry[]>(initialEntries);
+  const [entries, setEntries] = useState<Entry[]>([]);
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
@@ -249,6 +193,27 @@ export default function ManualEntryTab() {
     month,
   );
   const monthlyBalance = monthlyIncome - monthlyExpense;
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchEntries = async () => {
+      try {
+        const response = await fetch(
+          `/api/entries?year=${year}&month=${month + 1}`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) return;
+        const data = (await response.json()) as Entry[];
+        setEntries(data);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+      }
+    };
+
+    void fetchEntries();
+    return () => controller.abort();
+  }, [year, month]);
 
   const handlePrevMonth = useCallback(() => {
     setCurrentMonth(
@@ -301,7 +266,7 @@ export default function ManualEntryTab() {
 
   const handleAmountChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      setAmount(event.target.value);
+      setAmount(formatAmountInput(event.target.value));
     },
     [],
   );
@@ -313,25 +278,63 @@ export default function ManualEntryTab() {
     [],
   );
 
-  const handleDeleteEntry = useCallback((id: number) => {
+  const handleDeleteEntry = useCallback(async (id: string) => {
+    const response = await fetch(`/api/entries/${id}`, { method: 'DELETE' });
+    if (!response.ok) return;
     setEntries((previous) => previous.filter((entry) => entry.id !== id));
   }, []);
 
-  const handleSave = useCallback(() => {
-    if (!selectedDate) return;
-    const entry = buildEntry(selectedDate, amount, entryType, category, note);
-    if (!entry) return;
+  const handleSave = useCallback(async () => {
+    const numericAmount = parseAmountInput(amount);
+    if (!selectedDate || !amount || numericAmount <= 0) return;
 
-    setEntries((previous) => [...previous, entry]);
+    const optimisticId = `optimistic-${Math.random().toString(36).slice(2)}`;
+    const optimisticEntry: Entry = {
+      id: optimisticId,
+      date: selectedDate,
+      type: entryType,
+      category,
+      amount: numericAmount,
+      note: note || undefined,
+    };
+
+    // 楽観的更新: フォームを即座に閉じてエントリをリストに表示する
+    setEntries((previous) => [...previous, optimisticEntry]);
     setAmount('');
     setNote('');
     setShowForm(false);
+
+    const response = await fetch('/api/entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: selectedDate,
+        type: entryType,
+        category,
+        amount: numericAmount,
+        note: note || undefined,
+      }),
+    });
+
+    if (!response.ok) {
+      // 失敗時は楽観的エントリを取り除く
+      setEntries((previous) =>
+        previous.filter((entry) => entry.id !== optimisticId),
+      );
+      return;
+    }
+
+    const savedEntry = (await response.json()) as Entry;
+    // サーバーの実エントリで楽観的エントリを置き換える
+    setEntries((previous) =>
+      previous.map((entry) => (entry.id === optimisticId ? savedEntry : entry)),
+    );
   }, [selectedDate, amount, entryType, category, note]);
 
   const handleFormSubmit = useCallback(
     (event: React.SyntheticEvent) => {
       event.preventDefault();
-      handleSave();
+      void handleSave();
     },
     [handleSave],
   );
@@ -473,6 +476,7 @@ export default function ManualEntryTab() {
                   key={entry.id}
                   entry={entry}
                   onDelete={handleDeleteEntry}
+                  isPending={entry.id.startsWith('optimistic-')}
                 />
               ))}
             </div>
@@ -549,11 +553,12 @@ export default function ManualEntryTab() {
                     金額（円）
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={amount}
                     onChange={handleAmountChange}
                     placeholder="0"
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
 
@@ -566,7 +571,7 @@ export default function ManualEntryTab() {
                     value={note}
                     onChange={handleNoteChange}
                     placeholder="例：コンビニ、スーパーなど"
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -581,7 +586,7 @@ export default function ManualEntryTab() {
                 </button>
                 <button
                   type="submit"
-                  disabled={!amount || Number(amount) <= 0}
+                  disabled={!amount || parseAmountInput(amount) <= 0}
                   className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   保存

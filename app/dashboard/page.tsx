@@ -44,8 +44,8 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {activeTab === 'receipt' && <ReceiptTab />}
       {activeTab === 'manual' && <ManualEntryTab />}
+      {activeTab === 'receipt' && <ReceiptTab />}
       {activeTab === 'analytics' && <AnalyticsTab />}
       {activeTab === 'settings' && <SettingsTab />}
     </div>
