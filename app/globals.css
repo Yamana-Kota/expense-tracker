@@ -98,7 +98,7 @@ body {
 
 /* セル内の収支金額テキスト */
 .calendar-amount-label {
-  font-size: 0.75rem; /* 12px */
+  font-size: 0.65rem; /* 10.4px */
   line-height: 1.25;
   font-weight: 600;
 }

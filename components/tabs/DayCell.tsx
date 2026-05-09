@@ -3,19 +3,14 @@
 import { useCallback } from 'react';
 
 /**
- * カレンダーセル内に表示する金額を短縮フォーマットに変換する
+ * カレンダーセル内に表示する金額をフォーマットする
  *
- * 1万円以上は「万」単位で表示し、セル幅に収まるようにする。
- * 小数点以下が 0 のときは整数表示にする（例: 25.0万 → 25万、1.0万 → 1万）。
- * 小数第1位まで表示する（例: 1.2万、9.9万）。
+ * 3桁区切りのカンマ付き数字で返す。
  *
  * @param amount - 表示する金額（円）
  * @returns フォーマット済みの金額文字列
  */
 function formatAmount(amount: number): string {
-  if (amount >= 10000) {
-    return `${parseFloat((amount / 10000).toFixed(1))}万`;
-  }
   return amount.toLocaleString();
 }
 
@@ -98,7 +93,7 @@ function DayCell({
               isSelected ? 'text-red-200' : 'text-red-400'
             }`}
           >
-            -{formatAmount(expense)}円
+            -{formatAmount(expense)}
           </span>
         )}
         {income > 0 && (
@@ -107,7 +102,7 @@ function DayCell({
               isSelected ? 'text-green-200' : 'text-green-500'
             }`}
           >
-            +{formatAmount(income)}円
+            +{formatAmount(income)}
           </span>
         )}
       </div>

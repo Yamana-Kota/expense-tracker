@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -52,15 +52,12 @@ function parseAmountInput(formatted: string): number {
 /**
  * サマリーカード用に金額を整形する
  *
- * 1万円以上は「万円」単位で表示する。小数第1位まで保持し、末尾の .0 は除去する。
+ * 3桁区切りのカンマ付き数字に「円」を付けて返す。
  *
  * @param amount - 表示する金額（円）
  * @returns フォーマット済みの金額文字列
  */
 function formatSummaryAmount(amount: number): string {
-  if (amount >= 10000) {
-    return `${parseFloat((amount / 10000).toFixed(1))}万円`;
-  }
   return `${amount.toLocaleString()}円`;
 }
 
@@ -175,6 +172,8 @@ export default function ManualEntryTab() {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [isLoadingEntries, setIsLoadingEntries] = useState(true);
+  const entriesCache = useRef<Map<string, ReadonlyArray<Entry>>>(new Map());
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
@@ -196,8 +195,17 @@ export default function ManualEntryTab() {
 
   useEffect(() => {
     const controller = new AbortController();
+    const cacheKey = `${year}-${month}`;
 
     const fetchEntries = async () => {
+      const cached = entriesCache.current.get(cacheKey);
+      if (cached) {
+        setEntries([...cached]);
+        setIsLoadingEntries(false);
+      } else {
+        setIsLoadingEntries(true);
+      }
+
       try {
         const response = await fetch(
           `/api/entries?year=${year}&month=${month + 1}`,
@@ -205,9 +213,14 @@ export default function ManualEntryTab() {
         );
         if (!response.ok) return;
         const data = (await response.json()) as Entry[];
+        entriesCache.current.set(cacheKey, data);
         setEntries(data);
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') return;
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingEntries(false);
+        }
       }
     };
 
@@ -278,11 +291,19 @@ export default function ManualEntryTab() {
     [],
   );
 
-  const handleDeleteEntry = useCallback(async (id: string) => {
-    const response = await fetch(`/api/entries/${id}`, { method: 'DELETE' });
-    if (!response.ok) return;
-    setEntries((previous) => previous.filter((entry) => entry.id !== id));
-  }, []);
+  const handleDeleteEntry = useCallback(
+    async (id: string) => {
+      const response = await fetch(`/api/entries/${id}`, { method: 'DELETE' });
+      if (!response.ok) return;
+      const cacheKey = `${year}-${month}`;
+      setEntries((previous) => {
+        const updated = previous.filter((entry) => entry.id !== id);
+        entriesCache.current.set(cacheKey, updated);
+        return updated;
+      });
+    },
+    [year, month],
+  );
 
   const handleSave = useCallback(async () => {
     const numericAmount = parseAmountInput(amount);
@@ -326,10 +347,15 @@ export default function ManualEntryTab() {
 
     const savedEntry = (await response.json()) as Entry;
     // サーバーの実エントリで楽観的エントリを置き換える
-    setEntries((previous) =>
-      previous.map((entry) => (entry.id === optimisticId ? savedEntry : entry)),
-    );
-  }, [selectedDate, amount, entryType, category, note]);
+    const cacheKey = `${year}-${month}`;
+    setEntries((previous) => {
+      const updated = previous.map((entry) =>
+        entry.id === optimisticId ? savedEntry : entry,
+      );
+      entriesCache.current.set(cacheKey, updated);
+      return updated;
+    });
+  }, [selectedDate, amount, entryType, category, note, year, month]);
 
   const handleFormSubmit = useCallback(
     (event: React.SyntheticEvent) => {
@@ -348,7 +374,7 @@ export default function ManualEntryTab() {
             <span className="text-xs font-medium text-gray-500">支出</span>
           </div>
           <p className="text-lg font-bold text-gray-900">
-            {formatSummaryAmount(monthlyExpense)}
+            {isLoadingEntries ? '---' : formatSummaryAmount(monthlyExpense)}
           </p>
         </div>
         <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
@@ -357,23 +383,24 @@ export default function ManualEntryTab() {
             <span className="text-xs font-medium text-gray-500">収入</span>
           </div>
           <p className="text-lg font-bold text-gray-900">
-            {formatSummaryAmount(monthlyIncome)}
+            {isLoadingEntries ? '---' : formatSummaryAmount(monthlyIncome)}
           </p>
         </div>
         <div
-          className={`rounded-2xl px-4 py-3 shadow-sm ${monthlyBalance >= 0 ? 'bg-green-50' : 'bg-red-50'}`}
+          className={`rounded-2xl px-4 py-3 shadow-sm ${isLoadingEntries ? 'bg-white' : monthlyBalance >= 0 ? 'bg-green-50' : 'bg-red-50'}`}
         >
           <div className="mb-1.5 flex items-center gap-1.5">
             <Wallet
-              className={`h-4 w-4 ${monthlyBalance >= 0 ? 'text-green-500' : 'text-red-400'}`}
+              className={`h-4 w-4 ${isLoadingEntries ? 'text-gray-400' : monthlyBalance >= 0 ? 'text-green-500' : 'text-red-400'}`}
             />
             <span className="text-xs font-medium text-gray-500">収支</span>
           </div>
           <p
-            className={`text-lg font-bold ${monthlyBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}
+            className={`text-lg font-bold ${isLoadingEntries ? 'text-gray-900' : monthlyBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}
           >
-            {monthlyBalance >= 0 ? '+' : ''}
-            {formatSummaryAmount(Math.abs(monthlyBalance))}
+            {isLoadingEntries
+              ? '---'
+              : `${monthlyBalance >= 0 ? '+' : ''}${formatSummaryAmount(Math.abs(monthlyBalance))}`}
           </p>
         </div>
       </div>

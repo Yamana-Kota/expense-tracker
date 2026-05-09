@@ -19,7 +19,7 @@ export default function SummaryCards() {
           <span className="text-xs font-medium text-gray-500">支出</span>
         </div>
         <p className="text-lg font-bold text-gray-900">
-          ¥{(totalExpense / 10000).toFixed(1)}万
+          {totalExpense.toLocaleString()}円
         </p>
       </div>
       <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
@@ -28,7 +28,7 @@ export default function SummaryCards() {
           <span className="text-xs font-medium text-gray-500">収入</span>
         </div>
         <p className="text-lg font-bold text-gray-900">
-          ¥{(totalIncome / 10000).toFixed(0)}万
+          {totalIncome.toLocaleString()}円
         </p>
       </div>
       <div
@@ -43,7 +43,7 @@ export default function SummaryCards() {
         <p
           className={`text-lg font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-500'}`}
         >
-          {balance >= 0 ? '+' : ''}¥{(balance / 10000).toFixed(1)}万
+          {balance >= 0 ? '+' : ''}{Math.abs(balance).toLocaleString()}円
         </p>
       </div>
     </div>
